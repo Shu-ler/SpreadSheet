@@ -1,5 +1,6 @@
 #include "common.h"
 #include "test_runner_p.h"
+#include "FormulaAST.h"
 
 #include <iostream>
 #include <string>
@@ -12,6 +13,12 @@ inline std::ostream& operator<<(std::ostream& output, Position pos) {
 inline Position operator"" _pos(const char* str, std::size_t) {
 	return Position::FromString(str);
 }
+
+namespace {
+	double ExecuteASTFormula(const std::string& expression) {
+		return ParseFormulaAST(expression).Execute();
+	}
+}  // namespace
 
 namespace tests {
 	void TestPositionAndStringConversion() {
@@ -62,10 +69,26 @@ namespace tests {
 		ASSERT(!Position::FromString("ABCDEFGHIJKLMNOPQRS8").IsValid());
 	}
 
+	void TestExecuteASTFormula() {
+		ASSERT_EQUAL(ExecuteASTFormula("1"), 1.0);
+		ASSERT_EQUAL(ExecuteASTFormula("1+2*3-4/5"), 6.2);
+		
+		try {
+			ExecuteASTFormula("1/0");
+		}
+		catch (const FormulaError& fe) {
+			std::cout << fe.what() << std::endl;
+		}
+
+		std::cout << "Tests Passed" << std::endl;
+	}
+
 	void RunAll(TestRunner& tr) {
 		RUN_TEST(tr, tests::TestPositionAndStringConversion);
 		RUN_TEST(tr, tests::TestPositionToStringInvalid);
 		RUN_TEST(tr, tests::TestStringToPositionInvalid);
+
+		TestExecuteASTFormula();
 	}
 } // namespace tests
 

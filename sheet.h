@@ -24,5 +24,9 @@ public:
 	// Можете дополнить ваш класс нужными полями и методами
 
 private:
-	// Можете дополнить ваш класс нужными полями и методами
+    std::vector<std::vector<std::unique_ptr<CellInterface>>> cells_;
+    Size print_size_;
+
+    void UpdatePrintSize();
+    void ShrinkPrintSize();
 };

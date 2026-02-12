@@ -2,24 +2,24 @@
 
 #include "common.h"
 #include "formula.h"
+#include <memory>
 
 class Cell : public CellInterface {
 public:
     Cell();
     ~Cell();
 
-    void Set(std::string text);
+    void Set(std::string text) override;
     void Clear();
 
     Value GetValue() const override;
     std::string GetText() const override;
 
 private:
-//можете воспользоваться нашей подсказкой, но это необязательно.
-/*    class Impl;
+    class Impl;
     class EmptyImpl;
     class TextImpl;
     class FormulaImpl;
+    
     std::unique_ptr<Impl> impl_;
-*/
 };

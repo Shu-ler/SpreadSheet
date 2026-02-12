@@ -98,48 +98,107 @@
 //	return 0;
 //}
 
-#include "FormulaAST.h"
+//#include "FormulaAST.h"
+//#include "common.h"
+//#include "formula.h"
+//#include "test_runner_p.h"
+//
+//using Value = FormulaInterface::Value;
+//
+//namespace {
+//	Value ExecuteFormula(const std::string& expression) {
+//		return ParseFormula(expression)->Evaluate();
+//	}
+//}  // namespace
+//
+//int main() {
+//	try {
+//		auto empty_formula = ParseFormula("");
+//	}
+//	catch (const FormulaException& exc) {
+//		std::cout << exc.what() << std::endl;
+//	}
+//
+//	try {
+//		auto wrong_formula = ParseFormula("A1");
+//	}
+//	catch (const FormulaException& exc) {
+//		std::cout << exc.what() << std::endl;
+//	}
+//
+//	try {
+//		auto wrong_formula = ParseFormula("22/(22)+++++");
+//	}
+//	catch (const FormulaException& exc) {
+//		std::cout << exc.what() << std::endl;
+//	}
+//
+//	ASSERT_EQUAL(std::get<double>(ExecuteFormula("1")), 1.0);
+//	ASSERT_EQUAL(std::get<double>(ExecuteFormula("1+2*3-4/5")), 6.2);
+//
+//	std::cout << std::get<FormulaError>(ExecuteFormula("1/0")) << std::endl;
+//
+//	auto complex_formula = ParseFormula("((22/(22+3))-(8*5))");
+//	ASSERT_EQUAL(complex_formula->GetExpression(), "22/(22+3)-8*5");
+//
+//	std::cout << "Tests Passed" << std::endl;
+//}
+
+#include "cell.h"
 #include "common.h"
 #include "formula.h"
 #include "test_runner_p.h"
 
-using Value = FormulaInterface::Value;
+inline std::ostream& operator<<(std::ostream& output, const CellInterface::Value& value) {
+    std::visit([&](const auto& x) { output << x; }, value);
+    return output;
+}
 
-namespace {
-	Value ExecuteFormula(const std::string& expression) {
-		return ParseFormula(expression)->Evaluate();
-	}
-}  // namespace
+std::unique_ptr<CellInterface> CreateCell(const std::string& str) {
+    std::unique_ptr<CellInterface> cell = std::make_unique<Cell>();
+    cell->Set(str);
+    return cell;
+}
 
-int main() {
-	try {
-		auto empty_formula = ParseFormula("");
-	}
-	catch (const FormulaException& exc) {
-		std::cout << exc.what() << std::endl;
-	}
+int main()
+{
 
-	try {
-		auto wrong_formula = ParseFormula("A1");
-	}
-	catch (const FormulaException& exc) {
-		std::cout << exc.what() << std::endl;
-	}
+    auto simple_text = CreateCell("simple_text");
+    ASSERT_EQUAL(simple_text->GetText(), "simple_text");
+    ASSERT_EQUAL(std::get<std::string>(simple_text->GetValue()), "simple_text");
 
-	try {
-		auto wrong_formula = ParseFormula("22/(22)+++++");
-	}
-	catch (const FormulaException& exc) {
-		std::cout << exc.what() << std::endl;
-	}
+    auto empty_apostrophe = CreateCell("'");
+    ASSERT_EQUAL(empty_apostrophe->GetText(), "'");
+    ASSERT_EQUAL(std::get<std::string>(empty_apostrophe->GetValue()), "");
 
-	ASSERT_EQUAL(std::get<double>(ExecuteFormula("1")), 1.0);
-	ASSERT_EQUAL(std::get<double>(ExecuteFormula("1+2*3-4/5")), 6.2);
+    auto apostrophe = CreateCell("'apostrophe");
+    ASSERT_EQUAL(apostrophe->GetText(), "'apostrophe");
+    ASSERT_EQUAL(std::get<std::string>(apostrophe->GetValue()), "apostrophe");
 
-	std::cout << std::get<FormulaError>(ExecuteFormula("1/0")) << std::endl;
+    auto text_formula = CreateCell("'=1+2");
+    ASSERT_EQUAL(text_formula->GetText(), "'=1+2");
+    ASSERT_EQUAL(std::get<std::string>(text_formula->GetValue()), "=1+2");
 
-	auto complex_formula = ParseFormula("((22/(22+3))-(8*5))");
-	ASSERT_EQUAL(complex_formula->GetExpression(), "22/(22+3)-8*5");
+    auto empty_formula = CreateCell("=");
+    ASSERT_EQUAL(empty_formula->GetText(), "=");
+    ASSERT_EQUAL(std::get<std::string>(empty_formula->GetValue()), "=");
 
-	std::cout << "Tests Passed" << std::endl;
+
+    auto formula = CreateCell("=1+2");
+    ASSERT_EQUAL(formula->GetText(), "=1+2");
+    ASSERT_EQUAL(std::get<double>(formula->GetValue()), 3);
+
+    auto switch_text = CreateCell("1+2");
+    ASSERT_EQUAL(switch_text->GetText(), "1+2");
+    ASSERT_EQUAL(std::get<std::string>(switch_text->GetValue()), "1+2");
+
+    switch_text->Set("=1+2");
+    ASSERT_EQUAL(switch_text->GetText(), "=1+2");
+    ASSERT_EQUAL(std::get<double>(switch_text->GetValue()), 3);
+
+    switch_text->Set("=1/0");
+    ASSERT_EQUAL(switch_text->GetText(), "=1/0");
+    std::cout << std::get<FormulaError>(switch_text->GetValue()) << std::endl;
+
+    std::cout << "All tests passed" << std::endl;
 }

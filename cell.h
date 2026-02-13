@@ -6,7 +6,7 @@
 
 class Cell : public CellInterface {
 public:
-	using CellDeps = std::vector<Position>;
+	using CellsRefs = std::vector<Position>;
 
 	Cell(Sheet& sheet);
 	~Cell() = default;
@@ -18,7 +18,7 @@ public:
 
 	Value GetValue() const override;
 	std::string GetText() const override;
-	std::vector<Position> GetReferencedCells() const override;
+	CellsRefs GetReferencedCells() const override;
 
 private:
 	class Impl;
@@ -29,8 +29,8 @@ private:
 private:
 	std::unique_ptr<Impl> impl_;
 
-	CellDeps dependencies_;
-	CellDeps dependents_;
+	CellsRefs dependencies_;
+	CellsRefs dependents_;
 
 	// Êýø
 	mutable std::optional<Value> cache_;

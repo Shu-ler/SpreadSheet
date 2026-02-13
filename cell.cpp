@@ -54,8 +54,8 @@ std::string Cell::GetText() const {
 	return impl_->GetText();
 }
 
-std::vector<Position> Cell::GetReferencedCells() const {
-	return std::vector<Position>();
+Cell::CellsRefs Cell::GetReferencedCells() const {
+	return Cell::CellsRefs();
 }
 
 

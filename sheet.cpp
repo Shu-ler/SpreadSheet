@@ -54,6 +54,15 @@ void Sheet::ClearCell(Position pos) {
     }
 }
 
+Position Sheet::GetPosition(const Cell* cell) const {
+    for (const auto& [pos, ptr] : cells_) {
+        if (ptr.get() == cell) {
+            return pos;
+        }
+    }
+    return Position::NONE;
+}
+
 Size Sheet::GetPrintableSize() const {
     return print_size_;
 }

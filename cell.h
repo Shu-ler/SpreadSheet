@@ -8,6 +8,7 @@
 #include <optional>
 #include <unordered_set>
 #include <vector>
+#include <variant>
 
 /*
  *  ласс Cell представл€ет €чейку в электронной таблице.
@@ -36,6 +37,7 @@ public:
     // - текст: строка (без экранирующего символа)
     // - формула: double или FormulaError
     // - пусто: ""
+    // ¬алидирует кэш €чейки
     Value GetValue() const override;
 
     // ¬озвращает текстовое содержимое (как при редактировании):
@@ -50,7 +52,7 @@ public:
     std::vector<Position> GetReferencedCells() const override;
 
     // »нвалидирует кэш €чейки и зависимых €чеек
-    void Cell::InvalidateCache();
+    void InvalidateCache();
 
 private:
     // јбстрактный базовый класс дл€ реализации содержимого €чейки.
@@ -72,7 +74,7 @@ private:
     std::unordered_set<Cell*> dependents_;
 
     //  эш значени€ формулы (оптимизаци€ повторных вычислений)
-    mutable std::optional<Value> cache_;
+    mutable std::optional<FormulaInterface::Value> cache_;
 };
 
 /*

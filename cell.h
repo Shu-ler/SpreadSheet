@@ -51,7 +51,7 @@ public:
     // –езультат отсортирован и не содержит дубликатов.
     std::vector<Position> GetReferencedCells() const override;
 
-    // »нвалидирует кэш €чейки и зависимых €чеек
+    // »нвалидирует кэш €чейки и зависимых €чеек (рекурси€)
     void InvalidateCache();
 
 private:

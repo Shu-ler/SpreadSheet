@@ -6,3 +6,7 @@ out/
 *.obj
 *.log
 /.vs
+/buffer
+*.bkp
+/draw/new_cell_old.drawio
+/draw/new_cell_old.pdf

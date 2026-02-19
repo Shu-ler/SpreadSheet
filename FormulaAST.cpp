@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <sstream>
+#include <variant>
 
 namespace ASTImpl {
 
@@ -72,7 +73,7 @@ namespace ASTImpl {
         virtual ~Expr() = default;
         virtual void Print(std::ostream& out) const = 0;
         virtual void DoPrintFormula(std::ostream& out, ExprPrecedence precedence) const = 0;
-        virtual double Evaluate(/*добавьте сюда нужные аргументы*/ args) const = 0;
+        virtual double Evaluate(const SheetInterface& sheet) const = 0;
 
         // higher is tighter
         virtual ExprPrecedence GetPrecedence() const = 0;
@@ -142,8 +143,42 @@ namespace ASTImpl {
                 }
             }
 
-            double Evaluate(/*добавьте нужные аргументы*/) const override {
-                // Скопируйте ваше решение из предыдущих уроков.
+            double Evaluate(const SheetInterface& sheet) const override {
+                double lhs_value = lhs_->Evaluate(sheet);
+                double rhs_value = rhs_->Evaluate(sheet);
+
+                if (!isfinite(lhs_value) || !isfinite(rhs_value)) {
+                    throw FormulaError(FormulaError::Category::Arithmetic);
+                }
+
+                double result = 0.0;
+
+                switch (type_) {
+                case Add:
+                    result = lhs_value + rhs_value;
+                    break;
+                case Subtract:
+                    result = lhs_value - rhs_value;
+                    break;
+                case Multiply:
+                    result = lhs_value * rhs_value;
+                    break;
+                case Divide:
+                    if (rhs_value == 0) {
+                        throw FormulaError(FormulaError::Category::Arithmetic);
+                    }
+                    result = lhs_value / rhs_value;
+                    break;
+                default:
+                    assert(false);
+                    return 0.0;
+                }
+
+                if (!isfinite(result)) {
+                    throw FormulaError(FormulaError::Category::Arithmetic);
+                }
+
+                return result;
             }
 
         private:
@@ -180,8 +215,20 @@ namespace ASTImpl {
                 return EP_UNARY;
             }
 
-            double Evaluate(/*добавьте нужные аргументы*/ args) const override {
-                // Скопируйте ваше решение из предыдущих уроков.
+            double Evaluate(const SheetInterface& sheet) const override {
+                double operand_value = operand_->Evaluate(sheet);
+
+                if (!isfinite(operand_value)) {
+                    throw FormulaError(FormulaError::Category::Arithmetic);
+                }
+
+                double result = operand_value;
+
+                if (type_ == UnaryMinus) {
+                    result = -result;
+                }
+
+                return result;
             }
 
         private:
@@ -212,8 +259,48 @@ namespace ASTImpl {
                 return EP_ATOM;
             }
 
-            double Evaluate(/*добавьте нужные аргументы*/ args) const override {
-                // реализуйте метод.
+            double Evaluate(const SheetInterface& sheet) const override {
+                if (!cell_->IsValid()) {
+                    throw FormulaError(FormulaError::Category::Ref);
+                }
+
+                const CellInterface* cell = sheet.GetCell(*cell_);
+                if (!cell) {
+                    return 0.0;
+                }
+
+                CellInterface::Value value = cell->GetValue();
+
+                if (std::holds_alternative<double>(value)) {
+                    double result = std::get<double>(value);
+                    if (!isfinite(result)) {
+                        throw FormulaError(FormulaError::Category::Arithmetic);
+                    }
+                    return result;
+                }
+                else if (std::holds_alternative<std::string>(value)) {
+                    const std::string& str = std::get<std::string>(value);
+                    if (str.empty()) {
+                        return 0.0;
+                    }
+
+                    char* end;
+                    const char* cstr = str.c_str();
+                    double num = strtod(cstr, &end);
+
+                    if (end != cstr && *end == '\0') {
+                        if (!isfinite(num)) {
+                            throw FormulaError(FormulaError::Category::Arithmetic);
+                        }
+                        return num;
+                    }
+                    else {
+                        throw FormulaError(FormulaError::Category::Value);
+                    }
+                }
+                else {
+                    throw std::get<FormulaError>(value);
+                }
             }
 
         private:
@@ -238,7 +325,11 @@ namespace ASTImpl {
                 return EP_ATOM;
             }
 
-            double Evaluate(/*добавьте нужные аргументы*/ args) const override {
+            double Evaluate(const SheetInterface& sheet) const override {
+                if (!isfinite(value_)) {
+                    throw FormulaError(FormulaError::Category::Arithmetic);
+                }
+
                 return value_;
             }
 
@@ -396,8 +487,8 @@ void FormulaAST::PrintFormula(std::ostream& out) const {
     root_expr_->PrintFormula(out, ASTImpl::EP_ATOM);
 }
 
-double FormulaAST::Execute(/*добавьте нужные аргументы*/ args) const {
-    return root_expr_->Evaluate(/*добавьте нужные аргументы*/ args);
+double FormulaAST::Execute(const SheetInterface& sheet) const {
+    return root_expr_->Evaluate(sheet);
 }
 
 FormulaAST::FormulaAST(std::unique_ptr<ASTImpl::Expr> root_expr, std::forward_list<Position> cells)

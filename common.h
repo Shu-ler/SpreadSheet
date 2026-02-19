@@ -33,8 +33,11 @@ struct Size {
     bool operator==(Size rhs) const;
 };
 
-// Описывает ошибки, которые могут возникнуть при вычислении формулы.
-class FormulaError {
+/*
+ * Описывает ошибки, которые могут возникнуть при вычислении формулы.
+ * Реализация - в structures.cpp
+ */
+class  FormulaError {
 public:
     enum class Category {
         Ref,        // ссылка на ячейку с некорректной позицией
@@ -45,10 +48,9 @@ public:
     FormulaError(Category category);
 
     Category GetCategory() const;
+    std::string_view ToString() const;
 
     bool operator==(FormulaError rhs) const;
-
-    std::string_view ToString() const;
 
 private:
     Category category_;

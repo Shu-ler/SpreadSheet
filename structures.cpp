@@ -9,6 +9,34 @@ const int MAX_POS_LETTER_COUNT = 3;
 
 const Position Position::NONE = { -1, -1 };
 
+/*
+ * Реализация класса FormulaError
+ */
+
+FormulaError::FormulaError(Category category) : category_(category) {
+}
+
+FormulaError::Category FormulaError::GetCategory() const {
+	return category_;
+}
+
+bool FormulaError::operator==(FormulaError rhs) const {
+	return category_ == rhs.category_;
+}
+
+std::string_view FormulaError::ToString() const {
+	switch (category_) {
+		case Category::Ref:			return "#REF!";
+		case Category::Value:		return "#VALUE!";
+		case Category::Arithmetic:	return "#ARITHM!";
+		default:					return "#ERROR!";
+	}
+}
+
+
+/*
+ * Реализация структуры Position
+ */
 bool Position::operator==(const Position rhs) const {
 	return row == rhs.row && col == rhs.col;
 }

@@ -20,10 +20,6 @@ FormulaError::Category FormulaError::GetCategory() const {
 	return category_;
 }
 
-bool FormulaError::operator==(FormulaError rhs) const {
-	return category_ == rhs.category_;
-}
-
 std::string_view FormulaError::ToString() const {
 	switch (category_) {
 		case Category::Ref:			return "#REF!";
@@ -31,6 +27,14 @@ std::string_view FormulaError::ToString() const {
 		case Category::Arithmetic:	return "#ARITHM!";
 		default:					return "#ERROR!";
 	}
+}
+
+bool FormulaError::operator==(FormulaError rhs) const {
+	return category_ == rhs.category_;
+}
+
+std::ostream& operator<<(std::ostream& output, FormulaError fe) {
+	return output << fe.ToString();
 }
 
 

@@ -52,10 +52,9 @@ public:
     std::vector<Position> GetReferencedCells() const override;
 
     // Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
-    void InvalidateCache();
+    void InvalidateCache() const;
 
 private:
-    // Абстрактный базовый класс для реализации содержимого ячейки.
     class Impl;
     class EmptyImpl;
     class TextImpl;

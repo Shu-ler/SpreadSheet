@@ -39,7 +39,7 @@ public:
     enum class Category {
         Ref,        // ссылка на ячейку с некорректной позицией
         Value,      // ячейка не может быть трактована как число
-        Arithmetic, // некорректная арифметическая операция
+        Arithmetic, // в результате вычисления возникло деление на ноль
     };
 
     FormulaError(Category category);
@@ -54,7 +54,7 @@ private:
     Category category_;
 };
 
-std::ostream& operator<<(std::ostream& output, const FormulaError& fe);
+std::ostream& operator<<(std::ostream& output, FormulaError fe);
 
 // Исключение, выбрасываемое при попытке передать в метод некорректную позицию
 class InvalidPositionException : public std::out_of_range {
@@ -88,7 +88,7 @@ public:
     // В случае текстовой ячейки это её текст (без экранирующих символов). В
     // случае формулы - числовое значение формулы или сообщение об ошибке.
     virtual Value GetValue() const = 0;
-    
+   
     // Возвращает внутренний текст ячейки, как если бы мы начали её
     // редактирование. В случае текстовой ячейки это её текст (возможно,
     // содержащий экранирующие символы). В случае формулы - её выражение.

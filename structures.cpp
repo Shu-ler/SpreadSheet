@@ -41,6 +41,7 @@ std::ostream& operator<<(std::ostream& output, FormulaError fe) {
 /*
  * Реализация структуры Position
  */
+
 bool Position::operator==(const Position rhs) const {
 	return row == rhs.row && col == rhs.col;
 }

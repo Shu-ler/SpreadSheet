@@ -37,6 +37,7 @@ include_directories(
 file(GLOB sources
     *.cpp
     *.h
+    sheet.cpp
 )
 
 add_executable(

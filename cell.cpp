@@ -1,4 +1,5 @@
 ﻿#include "cell.h"
+#include "sheet.h"
 
 #include <cassert>
 #include <iostream>
@@ -8,12 +9,105 @@
 #include <algorithm>
 
 /*
- * Cell
+ * Интерфейс реализации ячейки (Pimpl)
+ */
+class Cell::Impl {
+public:
+	virtual ~Impl() = default;
+	virtual Value GetValue() const = 0;
+	virtual std::string GetText() const = 0;
+	virtual std::vector<Position> GetReferencedCells() const;
+};
+
+/*
+ * Пустая ячейка
+ */
+class Cell::EmptyImpl : public Cell::Impl {
+public:
+	Value GetValue() const override {
+		return 0.0;
+	}
+
+	std::string GetText() const override {
+		return "";
+	}
+
+	std::vector<Position> GetReferencedCells() const override {
+		return {};
+	};
+};
+
+/*
+ * Текстовая ячейка
+ */
+class Cell::TextImpl : public Cell::Impl {
+private:
+	std::string text_;
+
+public:
+	explicit TextImpl(std::string text)
+		: text_(std::move(text)) {
+	}
+
+	Value GetValue() const override {
+		if (text_.empty()) {
+			return "";
+		}
+
+		if (text_[0] == ESCAPE_SIGN) {
+			return text_.substr(1);
+		}
+
+		return text_;
+	}
+
+	std::string GetText() const override {
+		return text_;
+	}
+
+	std::vector<Position> GetReferencedCells() const override {
+		return {};
+	}
+};
+
+/*
+ * Формульная ячейка
+ */
+class Cell::FormulaImpl : public Cell::Impl {
+private:
+	std::unique_ptr<FormulaInterface> formula_;
+
+public:
+	explicit FormulaImpl(std::string expression)
+		: formula_(ParseFormula(std::move(expression))) {
+	}
+
+	Value GetValue() const override {
+		auto value = formula_->Evaluate();
+		if (std::holds_alternative<double>(value)) {
+			return std::get<double>(value);
+		}
+		else {
+			return std::get<FormulaError>(value);
+		}
+	}
+
+	std::string GetText() const override {
+		return FORMULA_SIGN + formula_->GetExpression();
+	}
+
+	std::vector<Position> GetReferencedCells() const override {
+		return formula_->GetReferencedCells();
+	}
+};
+
+/*
+ * Реализация класса Cell
  */
 
 Cell::Cell(Sheet& sheet)
-    : impl_(std::make_unique<EmptyImpl>())
-    , sheet_(sheet) {
+	: impl_(std::make_unique<EmptyImpl>())
+	, sheet_(sheet) {
 }
 
 void Cell::Set(std::string text) {
@@ -92,111 +186,30 @@ void Cell::Set(std::string text) {
 }
 
 void Cell::Clear() {
-    Set("");  // используем Set для корректной очистки зависимостей
+	Set("");  // используем Set для корректной очистки зависимостей
 }
 
 bool Cell::IsReferenced() const {
-    return !dependents_.empty();
+	return !dependents_.empty();
 }
 
 Cell::Value Cell::GetValue() const {
-    if (impl_->GetValue().index() == 0 && cache_.has_value()) {
-        // Если значение — строка, но у нас кэш (например, после вычисления формулы)
-        // На самом деле, кэш нужен только для формул
-        // Лучше: кэш только для FormulaImpl
-    }
-
-    if (cache_) {
-        return *cache_;
-    }
-
-    Value value = impl_->GetValue();
-
-    // Только формулы могут кэшироваться
-    if (dynamic_cast<const FormulaImpl*>(impl_.get())) {
-        cache_ = value;
-    }
-
-    return value;
+	return impl_->GetValue();
 }
 
 std::string Cell::GetText() const {
-    return impl_->GetText();
+	return impl_->GetText();
 }
 
 std::vector<Position> Cell::GetReferencedCells() const {
-    return impl_->GetReferencedCells();
+	return impl_->GetReferencedCells();
 }
 
 void Cell::InvalidateCache() {
-    cache_.reset();
-    for (Cell* dependent : dependents_) {
-        dependent->InvalidateCache();
-    }
-}
-
-/*
- * Cell::EmptyImpl
- */
-
-Value Cell::EmptyImpl::GetValue() const {
-    return "";
-}
-
-std::string Cell::EmptyImpl::GetText() const {
-    return "";
-}
-
-std::vector<Position> Cell::EmptyImpl::GetReferencedCells() const {
-    return {};
+	cache_.reset();
+	for (Cell* dependent : dependents_) {
+		dependent->InvalidateCache();
+	}
 }
 
 
-/*
- * Cell::TextImpl
- */
-
-Cell::TextImpl::TextImpl(std::string text)
-    : text_(std::move(text)) {
-}
-
-Value Cell::TextImpl::GetValue() const {
-    if (text_.empty()) {
-        return "";
-    }
-
-    if (text_[0] == ESCAPE_SIGN) {
-        return text_.substr(1);
-    }
-
-    return text_;
-}
-
-std::string Cell::TextImpl::GetText() const {
-    return text_;
-}
-
-std::vector<Position> Cell::TextImpl::GetReferencedCells() const {
-    return {};
-}
-
-
-/*
- * Cell::FormulaImpl
- */
-
-Cell::FormulaImpl::FormulaImpl(std::unique_ptr<FormulaInterface> formula)
-    : formula_(std::move(formula)) {
-}
-
-Value Cell::FormulaImpl::GetValue() const {
-    return formula_->Evaluate();
-}
-
-std::string Cell::FormulaImpl::GetText() const {
-    return FORMULA_SIGN + formula_->GetExpression();
-}
-
-std::vector<Position> Cell::FormulaImpl::GetReferencedCells() const {
-    return formula_->GetReferencedCells();
-}

@@ -25,13 +25,13 @@ public:
     // Пустая строка делает ячейку пустой.
     // Бросает FormulaException при синтаксической ошибке.
     // Бросает CircularDependencyException при циклической зависимости.
-    void Set(std::string text) override;
+    void Set(std::string text);
 
     // Очищает содержимое ячейки, делает её пустой.
     void Clear();
 
     // Возвращает true, если на эту ячейку ссылаются другие ячейки.
-    bool IsReferenced() const override;
+    bool IsReferenced() const;
 
     // Возвращает значение ячейки:
     // - текст: строка (без экранирующего символа)
@@ -52,7 +52,7 @@ public:
     std::vector<Position> GetReferencedCells() const override;
 
     // Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
-    void InvalidateCache() const;
+    void InvalidateCache();
 
 private:
     class Impl;
@@ -74,53 +74,4 @@ private:
 
     // Кэш значения формулы (оптимизация повторных вычислений)
     mutable std::optional<FormulaInterface::Value> cache_;
-};
-
-/*
- * Интерфейс реализации ячейки (Pimpl)
- */
-class Cell::Impl {
-public:
-    virtual ~Impl() = default;
-    virtual Value GetValue() const = 0;
-    virtual std::string GetText() const = 0;
-    virtual std::vector<Position> GetReferencedCells() const = 0;
-};
-
-/*
- * Пустая ячейка
- */
-class Cell::EmptyImpl : public Cell::Impl {
-public:
-    Value GetValue() const override;
-    std::string GetText() const override;
-    std::vector<Position> GetReferencedCells() const override;
-};
-
-/*
- * Текстовая ячейка
- */
-class Cell::TextImpl : public Cell::Impl {
-public:
-    explicit TextImpl(std::string text);
-    Value GetValue() const override;
-    std::string GetText() const override;
-    std::vector<Position> GetReferencedCells() const override;
-
-private:
-    std::string text_;
-};
-
-/*
- * Формульная ячейка
- */
-class Cell::FormulaImpl : public Cell::Impl {
-public:
-    explicit FormulaImpl(std::string expression);
-    Value GetValue() const override;
-    std::string GetText() const override;
-    std::vector<Position> GetReferencedCells() const override;
-
-private:
-    std::unique_ptr<FormulaInterface> formula_;
 };

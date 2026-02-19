@@ -13,7 +13,8 @@
  */
 class Sheet : public SheetInterface {
 public:
-    ~Sheet();
+    Sheet() = default;
+    ~Sheet() override = default;
 
     // Устанавливает содержимое ячейки по указанной позиции.
     // Если текст начинается с '=', интерпретируется как формула.

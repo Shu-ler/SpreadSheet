@@ -1,7 +1,5 @@
 #include "sheet.h"
-
 #include "cell.h"
-//#include "common.h"
 
 #include <algorithm>
 #include <functional>
@@ -15,20 +13,12 @@ void Sheet::SetCell(Position pos, std::string text) {
         throw InvalidPositionException("Invalid position");
     }
 
-    if (IsFormula(text)) {
-
+    auto& cell_ptr = cells_[pos];
+    if (!cell_ptr) {
+        cell_ptr = std::make_unique<Cell>(*this);
     }
+    cell_ptr->Set(std::move(text));
 
-    auto [it, inserted] = cells_.try_emplace()
-
-    //// Создаём ячейку или перезаписываем существующую
-    //auto& cell_ptr = cells_[pos];
-    //if (!cell_ptr) {
-    //    cell_ptr = std::make_unique<Cell>(*this);  // Передаём ссылку на таблицу
-    //}
-    //cell_ptr->Set(std::move(text));
-
-    // Обновляем размер печатной области
     UpdatePrintSize();
 }
 
@@ -51,6 +41,7 @@ void Sheet::ClearCell(Position pos) {
     if (!pos.IsValid()) {
         throw InvalidPositionException("Invalid position");
     }
+
     auto it = cells_.find(pos);
     if (it != cells_.end()) {
         cells_.erase(it);

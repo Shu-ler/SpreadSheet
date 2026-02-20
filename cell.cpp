@@ -33,10 +33,6 @@ public:
 	std::string GetText() const override {
 		return "";
 	}
-
-	//std::vector<Position> GetReferencedCells() const override {
-	//	return {};
-	//};
 };
 
 /*
@@ -66,10 +62,6 @@ public:
 	std::string GetText() const override {
 		return text_;
 	}
-
-	//std::vector<Position> GetReferencedCells() const override {
-	//	return {};
-	//}
 };
 
 /*

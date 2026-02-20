@@ -78,6 +78,12 @@ private:
     // Проверяет строку на предмет, не формула ли это
     inline bool IsFormula(std::string text);
 
+    // Проверяет, не ссылается ли формула на саму себя
+    void CheckSelfReference(const std::vector<Position>& referenced_cells, Position cell_pos);
+
+    // Проверяет, не возникнет ли циклическая зависимость при установке формулы
+    void CheckCircularDependency(const Cell* target_cell, const std::vector<Position>& referenced_cells);
+
 private:
     // Хранение ячеек: разреженная таблица на основе хэш-карты.
     // Ключ — позиция (row, col), значение — уникальный указатель на Cell.

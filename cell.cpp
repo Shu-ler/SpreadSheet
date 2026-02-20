@@ -214,4 +214,12 @@ void Cell::InvalidateCache() {
 	}
 }
 
+void Cell::AddDependentCell(Cell* dependent) {
+	dependents_.insert(dependent);
+}
+
+void Cell::RemoveDependentCell(Cell* dependent) {
+	dependents_.erase(dependent);
+}
+
 

@@ -55,6 +55,9 @@ public:
     // Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
     void InvalidateCache();
 
+    void AddDependentCell(Cell* dependent);
+    void RemoveDependentCell(Cell* dependent);
+
 private:
     class Impl;
     class EmptyImpl;

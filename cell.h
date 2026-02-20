@@ -2,13 +2,14 @@
 
 #include "common.h"
 #include "formula.h"
-#include "sheet.h"
 
 #include <memory>
 #include <optional>
 #include <unordered_set>
 #include <vector>
 #include <variant>
+
+class Sheet;  // Forward declaration
 
 /*
  * Класс Cell представляет ячейку в электронной таблице.
@@ -65,9 +66,6 @@ private:
 
     // Ссылка на лист — нужна для проверки циклических зависимостей
     Sheet& sheet_;
-
-    // Позиции ячеек, от которых зависит эта (для проверки циклов)
-    std::vector<Position> referenced_cells_;
 
     // Ячейки, которые зависят от этой (для обновления при изменениях)
     std::unordered_set<Cell*> dependents_;

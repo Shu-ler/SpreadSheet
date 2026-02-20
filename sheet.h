@@ -57,6 +57,15 @@ public:
     // Пустые ячейки — пустые строки. Столбцы разделены табуляцией.
     void PrintTexts(std::ostream& output) const override;
 
+    // Хэш-функция для Position — требуется для использования в unordered_map.
+    struct PositionHash {
+        size_t operator()(const Position& pos) const {
+            // Комбинируем row и col через битовый сдвиг.
+            return static_cast<size_t>(pos.row) ^
+                (static_cast<size_t>(pos.col) << 16);
+        }
+    };
+
 private:
     // Обновляет размер печатной области (print_size_) на основе текущих ячеек.
     // Проходит по всем занятым позициям, определяет максимальные индексы.
@@ -66,14 +75,8 @@ private:
     // чтобы уменьшить размер области, если последние данные были удалены.
     void ShrinkPrintSize();
 
-    // Хэш-функция для Position — требуется для использования в unordered_map.
-    struct PositionHash {
-        size_t operator()(const Position& pos) const {
-            // Комбинируем row и col через битовый сдвиг.
-            return static_cast<size_t>(pos.row) ^
-                (static_cast<size_t>(pos.col) << 16);
-        }
-    };
+    // Проверяет строку на предмет, не формула ли это
+    inline bool IsFormula(std::string text);
 
 private:
     // Хранение ячеек: разреженная таблица на основе хэш-карты.

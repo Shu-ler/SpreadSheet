@@ -16,7 +16,9 @@ public:
 	virtual ~Impl() = default;
 	virtual Value GetValue() const = 0;
 	virtual std::string GetText() const = 0;
-	virtual std::vector<Position> GetReferencedCells() const;
+	virtual std::vector<Position> GetReferencedCells() const {
+		return {};
+	};
 };
 
 /*
@@ -32,9 +34,9 @@ public:
 		return "";
 	}
 
-	std::vector<Position> GetReferencedCells() const override {
-		return {};
-	};
+	//std::vector<Position> GetReferencedCells() const override {
+	//	return {};
+	//};
 };
 
 /*
@@ -65,9 +67,9 @@ public:
 		return text_;
 	}
 
-	std::vector<Position> GetReferencedCells() const override {
-		return {};
-	}
+	//std::vector<Position> GetReferencedCells() const override {
+	//	return {};
+	//}
 };
 
 /*
@@ -76,14 +78,22 @@ public:
 class Cell::FormulaImpl : public Cell::Impl {
 private:
 	std::unique_ptr<FormulaInterface> formula_;
+	Sheet& sheet_;
+
+	// Позиции ячеек, на которые ссылается формула (для проверки циклов)
+	std::vector<Position> referenced_cells_;
 
 public:
-	explicit FormulaImpl(std::string expression)
-		: formula_(ParseFormula(std::move(expression))) {
+	explicit FormulaImpl(std::string expression, Sheet& sheet)
+		: formula_(ParseFormula(std::move(expression)))
+		, sheet_(sheet) {
+		referenced_cells_ = formula_->GetReferencedCells();
+		std::sort(referenced_cells_.begin(), referenced_cells_.end());
+		referenced_cells_.erase(std::unique(referenced_cells_.begin(), referenced_cells_.end()), referenced_cells_.end());
 	}
 
 	Value GetValue() const override {
-		auto value = formula_->Evaluate();
+		auto value = formula_->Evaluate(sheet_);
 		if (std::holds_alternative<double>(value)) {
 			return std::get<double>(value);
 		}
@@ -97,7 +107,7 @@ public:
 	}
 
 	std::vector<Position> GetReferencedCells() const override {
-		return formula_->GetReferencedCells();
+		return referenced_cells_;
 	}
 };
 
@@ -114,73 +124,73 @@ void Cell::Set(std::string text) {
 	// Очищаем кэш перед любыми изменениями
 	cache_.reset();
 
-	// Сначала удаляем эту ячейку из dependents_ всех, на кого ссылались
-	for (const auto& pos : referenced_cells_) {
-		if (auto* cell = sheet_.GetCell(pos)) {
-			// Предполагается, что GetCell возвращает Cell*, а не const CellInterface*
-			static_cast<Cell*>(cell)->dependents_.erase(this);
-		}
-	}
-	referenced_cells_.clear();
+	//// Сначала удаляем эту ячейку из dependents_ всех, на кого ссылались
+	//for (const auto& pos : referenced_cells_) {
+	//	if (auto* cell = sheet_.GetCell(pos)) {
+	//		// Предполагается, что GetCell возвращает Cell*, а не const CellInterface*
+	//		static_cast<Cell*>(cell)->dependents_.erase(this);
+	//	}
+	//}
+	//referenced_cells_.clear();
 
 	if (text.empty()) {
 		impl_ = std::make_unique<EmptyImpl>();
 		return;
 	}
 
-	if (text[0] == FORMULA_SIGN) {
-		if (text.size() == 1) {
-			impl_ = std::make_unique<TextImpl>(std::move(text));
-			return;
-		}
+	//if (text[0] == FORMULA_SIGN) {
+	//	if (text.size() == 1) {
+	//		impl_ = std::make_unique<TextImpl>(std::move(text));
+	//		return;
+	//	}
 
-		try {
-			auto formula = ParseFormula(text.substr(1));
+	//	try {
+	//		auto formula = ParseFormula(text.substr(1));
 
-			// Получаем список ссылок до установки
-			auto refs = formula->GetReferencedCells();
-			std::sort(refs.begin(), refs.end());
-			refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
+	//		// Получаем список ссылок до установки
+	//		auto refs = formula->GetReferencedCells();
+	//		std::sort(refs.begin(), refs.end());
+	//		refs.erase(std::unique(refs.begin(), refs.end()), refs.end());
 
-			// Проверяем циклические зависимости
-			std::unordered_set<Position> visited;
-			std::function<bool(const Cell*)> has_cycle = [&](const Cell* cell) {
-				if (!cell) return false;
-				Position this_pos = sheet_.GetPosition(this);
-				if (visited.count(this_pos)) return true;
-				visited.insert(this_pos);
+	//		// Проверяем циклические зависимости
+	//		std::unordered_set<Position> visited;
+	//		std::function<bool(const Cell*)> has_cycle = [&](const Cell* cell) {
+	//			if (!cell) return false;
+	//			Position this_pos = sheet_.GetPosition(this);
+	//			if (visited.count(this_pos)) return true;
+	//			visited.insert(this_pos);
 
-				for (const auto& dep_pos : cell->referenced_cells_) {
-					if (auto* dep_cell = dynamic_cast<Cell*>(sheet_.GetCell(dep_pos))) {
-						if (has_cycle(dep_cell)) {
-							return true;
-						}
-					}
-				}
-				return false;
-				};
+	//			//for (const auto& dep_pos : cell->referenced_cells_) {
+	//			//	if (auto* dep_cell = dynamic_cast<Cell*>(sheet_.GetCell(dep_pos))) {
+	//			//		if (has_cycle(dep_cell)) {
+	//			//			return true;
+	//			//		}
+	//			//	}
+	//			//}
+	//			return false;
+	//			};
 
-			// Временно устанавливаем ссылки для проверки
-			referenced_cells_ = refs;
-			if (has_cycle(this)) {
-				referenced_cells_.clear();
-				throw CircularDependencyException("Cyclic dependency detected");
-			}
+	//		// Временно устанавливаем ссылки для проверки
+	//		//referenced_cells_ = refs;
+	///*		if (has_cycle(this)) {
+	//			referenced_cells_.clear();
+	//			throw CircularDependencyException("Cyclic dependency detected");
+	//		}*/
 
-			// Сохраняем зависимости
-			for (const auto& pos : referenced_cells_) {
-				if (auto* cell = dynamic_cast<Cell*>(sheet_.GetCell(pos))) {
-					cell->dependents_.insert(this);
-				}
-			}
+	//		// Сохраняем зависимости
+	//	/*	for (const auto& pos : referenced_cells_) {
+	//			if (auto* cell = dynamic_cast<Cell*>(sheet_.GetCell(pos))) {
+	//				cell->dependents_.insert(this);
+	//			}
+	//		}*/
 
-			impl_ = std::make_unique<FormulaImpl>(std::move(formula));
-		}
-		catch (const FormulaException&) {
-			throw;
-		}
-		return;
-	}
+	//		impl_ = std::make_unique<FormulaImpl>(text.substr(1), sheet_);
+	//	}
+	//	catch (const FormulaException&) {
+	//		throw;
+	//	}
+	//	return;
+	//}
 
 	impl_ = std::make_unique<TextImpl>(std::move(text));
 }

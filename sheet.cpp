@@ -10,19 +10,23 @@
 
 using namespace std::literals;
 
-Sheet::~Sheet() = default;
-
 void Sheet::SetCell(Position pos, std::string text) {
     if (!pos.IsValid()) {
         throw InvalidPositionException("Invalid position");
     }
 
-    // Создаём ячейку или перезаписываем существующую
-    auto& cell_ptr = cells_[pos];
-    if (!cell_ptr) {
-        cell_ptr = std::make_unique<Cell>(*this);  // Передаём ссылку на таблицу
+    if (IsFormula(text)) {
+
     }
-    cell_ptr->Set(std::move(text));
+
+    auto [it, inserted] = cells_.try_emplace()
+
+    //// Создаём ячейку или перезаписываем существующую
+    //auto& cell_ptr = cells_[pos];
+    //if (!cell_ptr) {
+    //    cell_ptr = std::make_unique<Cell>(*this);  // Передаём ссылку на таблицу
+    //}
+    //cell_ptr->Set(std::move(text));
 
     // Обновляем размер печатной области
     UpdatePrintSize();
@@ -134,6 +138,10 @@ void Sheet::ShrinkPrintSize() {
     // Просто вызываем UpdatePrintSize(), так как область может уменьшиться
     // после удаления ячейки.
     UpdatePrintSize();
+}
+
+inline bool Sheet::IsFormula(std::string text) {
+    return text.size() > 1 && text[0] == FORMULA_SIGN;
 }
 
 std::unique_ptr<SheetInterface> CreateSheet() {

@@ -26,15 +26,6 @@ struct Position {
     static const Position NONE;
 };
 
-//namespace std {
-//    template<>
-//    struct hash<Position> {
-//        size_t operator()(const Position& pos) const {
-//            return static_cast<size_t>(pos.row) * Position::MAX_COLS + pos.col;
-//        }
-//    };
-//}
-
 struct Size {
     int rows = 0;
     int cols = 0;

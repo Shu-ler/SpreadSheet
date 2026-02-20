@@ -72,6 +72,7 @@ void Sheet::SetCell(Position pos, std::string text) {
 	// --- Шаг 6: Обновляем размер печатной области ---
 	UpdatePrintSize();
 }
+
 const CellInterface* Sheet::GetCell(Position pos) const {
 	if (!pos.IsValid()) {
 		throw InvalidPositionException("Invalid position");

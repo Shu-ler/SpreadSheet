@@ -51,7 +51,9 @@ public:
     // Результат отсортирован и не содержит дубликатов.
     std::vector<Position> GetReferencedCells() const override;
 
-    // Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
+    std::unordered_set<Cell*> GetDependentsCells() const;
+
+    //// Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
     void InvalidateCache();
 
     void AddDependentCell(Cell* dependent);
@@ -74,7 +76,4 @@ private:
 
     // Ячейки, которые зависят от этой (инвалидация кэша)
     std::unordered_set<Cell*> dependents_;
-
-    // Кэш значения формулы (оптимизация повторных вычислений)
-    mutable std::optional<FormulaInterface::Value> cache_;
 };

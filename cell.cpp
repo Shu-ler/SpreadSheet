@@ -20,6 +20,7 @@ public:
 	virtual std::vector<Position> GetReferencedCells() const {
 		return {};
 	};
+	virtual void InvalidateCacheImpl() {}
 };
 
 /*
@@ -50,14 +51,31 @@ public:
 
 	Value GetValue() const override {
 		if (text_.empty()) {
-			return "";
+			return "";  // ← string, но Evaluate знает, что это 0
 		}
 
-		if (text_[0] == ESCAPE_SIGN) {
-			return text_.substr(1);
+		std::string_view content = text_;
+		if (content[0] == ESCAPE_SIGN) {
+			content.remove_prefix(1);
+			if (content.empty()) {
+				return "";
+			}
 		}
 
-		return text_;
+		char* end;
+		double num = strtod(content.data(), &end);
+
+		// Пропускаем пробелы после
+		while (*end == ' ' || *end == '\t') ++end;
+
+		if (end != content.data() && *end == '\0') {
+			if (!std::isfinite(num)) {
+				return FormulaError(FormulaError::Category::Arithmetic);
+			}
+			return num;
+		}
+
+		return std::string(content);
 	}
 
 	std::string GetText() const override {
@@ -73,6 +91,9 @@ private:
 	std::unique_ptr<FormulaInterface> formula_;
 	Sheet& sheet_;
 
+	// Кэш значения формулы (оптимизация повторных вычислений)
+	mutable std::optional<Value> cache_;
+
 	// Позиции ячеек, на которые ссылается формула (для проверки циклов)
 	std::vector<Position> referenced_cells_;
 
@@ -86,13 +107,18 @@ public:
 	}
 
 	Value GetValue() const override {
-		auto value = formula_->Evaluate(sheet_);
-		if (std::holds_alternative<double>(value)) {
-			return std::get<double>(value);
+		if (!cache_.has_value()) {
+			FormulaInterface::Value result = formula_->Evaluate(sheet_);
+
+			// Преобразуем FormulaInterface::Value в CellInterface::Value
+			if (std::holds_alternative<double>(result)) {
+				cache_ = std::get<double>(result);
+			}
+			else {
+				cache_ = std::get<FormulaError>(result);
+			}
 		}
-		else {
-			return std::get<FormulaError>(value);
-		}
+		return *cache_;
 	}
 
 	std::string GetText() const override {
@@ -101,6 +127,10 @@ public:
 
 	std::vector<Position> GetReferencedCells() const override {
 		return referenced_cells_;
+	}
+
+	void InvalidateCacheImpl() override {
+		cache_.reset();
 	}
 };
 
@@ -152,8 +182,12 @@ std::vector<Position> Cell::GetReferencedCells() const {
 	return impl_->GetReferencedCells();
 }
 
+std::unordered_set<Cell*> Cell::GetDependentsCells() const {
+	return dependents_;
+}
+
 void Cell::InvalidateCache() {
-	cache_.reset();
+	impl_->InvalidateCacheImpl();
 	for (Cell* dependent : dependents_) {
 		dependent->InvalidateCache();
 	}

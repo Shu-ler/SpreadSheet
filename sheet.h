@@ -75,6 +75,12 @@ private:
     // чтобы уменьшить размер области, если последние данные были удалены.
     void ShrinkPrintSize();
 
+    // Проверяет позицию; бросает InvalidPositionException, если некорректна
+    void EnsurePositionValid(Position pos) const;
+
+    // Возвращает указатель на существующую или новую ячейку по позиции
+    Cell* GetOrCreateCell(Position pos);
+
     // Проверяет строку на предмет, не формула ли это
     inline bool IsFormula(std::string text);
 
@@ -86,6 +92,11 @@ private:
 
     // Создаёт пустые ячейки для указанных позиций, если они ещё не существуют
     void EnsureCellsExist(const std::vector<Position>& positions);
+
+    // Обновляет граф зависимостей: удаляет старые связи, добавляет новые
+    void UpdateDependencies(Cell* cell,
+        const std::vector<Position>& old_refs,
+        const std::vector<Position>& new_refs);
 
 private:
     // Хранение ячеек: разреженная таблица на основе хэш-карты.

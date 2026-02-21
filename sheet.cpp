@@ -10,38 +10,25 @@
 using namespace std::literals;
 
 void Sheet::SetCell(Position pos, std::string text) {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid position");
-	}
+	EnsurePositionValid(pos);
 
-	// Получаем или создаём ячейку
-	auto& cell_ptr = cells_[pos];
-	Cell* cell = nullptr;
+	Cell* cell = GetOrCreateCell(pos);
 
-	if (!cell_ptr) {
-		cell_ptr = std::make_unique<Cell>(*this);
-	}
-	cell = cell_ptr.get();
-
-	// Сохраняем старые ссылки ДО изменения содержимого
+	// Сохраняем старые ссылки
 	std::vector<Position> old_refs;
-	if (IsFormula(cell->GetText())) {
+	if (Cell::IsFormulaText(cell->GetText())) {
 		old_refs = cell->GetReferencedCells();
 	}
 
-	// --- Шаг 1: Проверка формулы (если это формула) ---
+	// Анализируем новые ссылки
 	std::vector<Position> new_refs;
-	bool is_formula = IsFormula(text);
-
-	if (is_formula) {
+	if (Cell::IsFormulaText(text)) {
 		try {
 			auto formula = ParseFormula(text.substr(1));
 			new_refs = formula->GetReferencedCells();
 
 			// Проверка самоссылки
-			if (std::find(new_refs.begin(), new_refs.end(), pos) != new_refs.end()) {
-				throw CircularDependencyException("Cyclic dependency: cell references itself");
-			}
+			CheckSelfReference(new_refs, pos);
 
 			// Проверка циклов
 			CheckCircularDependency(new_refs, pos);
@@ -51,42 +38,25 @@ void Sheet::SetCell(Position pos, std::string text) {
 		}
 	}
 
-	// --- Шаг 2: Создаём пустые ячейки для всех новых ссылок ---
+	// Создаём пустые ячейки для всех ссылок
 	EnsureCellsExist(new_refs);
 
-	// --- Шаг 3: Устанавливаем новое значение ---
-	cell->Set(std::move(text));  // теперь impl_ обновлён
+	// Устанавливаем новое значение
+	cell->Set(std::move(text));
 
-	// --- Шаг 4: Обновляем граф зависимостей ---
+	// Обновляем граф зависимостей
+	UpdateDependencies(cell, old_refs, new_refs);
 
-	// Удаляем эту ячейку из dependents_ старых зависимостей
-	for (const auto& ref_pos : old_refs) {
-		if (ref_pos == pos) continue;
-		if (auto* dep_cell = dynamic_cast<Cell*>(GetCell(ref_pos))) {
-			dep_cell->RemoveDependentCell(cell);
-		}
-	}
+	// Инвалидируем кэш
+	cell->InvalidateCache();
 
-	// Добавляем эту ячейку в dependents_ новых зависимостей
-	for (const auto& ref_pos : new_refs) {
-		if (ref_pos == pos) continue;
-		// Гарантированно существует
-		auto* dep_cell = dynamic_cast<Cell*>(GetCell(ref_pos));
-		assert(dep_cell && "Dependency cell should exist");
-		dep_cell->AddDependentCell(cell);
-	}
-
-	// --- Шаг 5: Инвалидируем кэш ---
-	cell->InvalidateCache();  // инвалидирует себя и всех, кто от неё зависит
-
-	// --- Шаг 6: Обновляем размер печатной области ---
+	// Обновляем размер печатной области
 	UpdatePrintSize();
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid position");
-	}
+	EnsurePositionValid(pos);
+
 	auto it = cells_.find(pos);
 	if (it == cells_.end() || !it->second) {
 		return nullptr;
@@ -99,9 +69,7 @@ CellInterface* Sheet::GetCell(Position pos) {
 }
 
 void Sheet::ClearCell(Position pos) {
-	if (!pos.IsValid()) {
-		throw InvalidPositionException("Invalid position");
-	}
+	EnsurePositionValid(pos);
 
 	auto it = cells_.find(pos);
 	if (it != cells_.end()) {
@@ -192,6 +160,20 @@ void Sheet::ShrinkPrintSize() {
 	UpdatePrintSize();
 }
 
+void Sheet::EnsurePositionValid(Position pos) const {
+	if (!pos.IsValid()) {
+		throw InvalidPositionException("Invalid position");
+	}
+}
+
+Cell* Sheet::GetOrCreateCell(Position pos) {
+	auto& cell_ptr = cells_[pos];
+	if (!cell_ptr) {
+		cell_ptr = std::make_unique<Cell>(*this);
+	}
+	return cell_ptr.get();
+}
+
 inline bool Sheet::IsFormula(std::string text) {
 	return text.size() > 1 && text[0] == FORMULA_SIGN;
 }
@@ -247,50 +229,25 @@ void Sheet::EnsureCellsExist(const std::vector<Position>& positions) {
 	}
 }
 
-//void Sheet::CheckCircularDependency(const Cell* target_cell, const std::vector<Position>& referenced_cells) {
-//	// Множество посещённых ячеек для отслеживания пути при DFS.
-//	// Используется для обнаружения циклов в графе зависимостей.
-//	std::unordered_set<const Cell*> visited;
-//
-//	// Рекурсивная лямбда для проверки наличия цикла в графе зависимостей.
-//	// Обходит все ячейки, от которых зависит текущая, и проверяет,
-//	// не приведёт ли зависимость к повторному посещению уже пройденной ячейки.
-//	std::function<bool(const Cell*)> has_cycle = [&](const Cell* cell) -> bool {
-//		// Если ячейка уже в пути — найден цикл
-//		if (visited.find(cell) != visited.end()) {
-//			return true;
-//		}
-//
-//		// Помечаем ячейку как посещённую
-//		visited.insert(cell);
-//
-//		// Рекурсивно проверяем все ячейки, на которые ссылается текущая
-//		for (const auto& dep_pos : cell->GetReferencedCells()) {
-//			// Получаем указатель на зависимую ячейку
-//			if (const auto* dep_cell = dynamic_cast<const Cell*>(GetCell(dep_pos))) {
-//				if (has_cycle(dep_cell)) {
-//					return true; // Цикл обнаружен в поддереве
-//				}
-//			}
-//		}
-//
-//		// Убираем ячейку из множества при возврате (возврат по стеку)
-//		// Это важно: один и тот же узел может быть частью разных путей без цикла
-//		visited.erase(cell);
-//		return false;
-//		};
-//
-//	// Проверяем каждую ячейку, на которую ссылается новая формула:
-//	// если начать обход из неё, мы не должны добраться до целевой ячейки (target_cell),
-//	// иначе будет циклическая зависимость.
-//	for (const auto& ref_pos : referenced_cells) {
-//		if (const auto* dep_cell = dynamic_cast<const Cell*>(GetCell(ref_pos))) {
-//			if (has_cycle(dep_cell)) {
-//				throw CircularDependencyException("Cyclic dependency detected");
-//			}
-//		}
-//	}
-//}
+void Sheet::UpdateDependencies(Cell* cell, 
+			const std::vector<Position>& old_refs, 
+			const std::vector<Position>& new_refs) {
+	// Удаляем эту ячейку из dependents_ старых зависимостей
+	for (const auto& ref_pos : old_refs) {
+		if (ref_pos == GetPosition(cell)) continue; // на всякий случай исключаем самоссылку
+		if (auto* dep_cell = dynamic_cast<Cell*>(GetCell(ref_pos))) {
+			dep_cell->RemoveDependentCell(cell);
+		}
+	}
+
+	// Добавляем эту ячейку в dependents_ новых зависимостей
+	for (const auto& ref_pos : new_refs) {
+		if (ref_pos == GetPosition(cell)) continue;
+		auto* dep_cell = dynamic_cast<Cell*>(GetCell(ref_pos));
+		assert(dep_cell && "Dependency cell must exist after EnsureCellsExist");
+		dep_cell->AddDependentCell(cell);
+	}
+}
 
 std::unique_ptr<SheetInterface> CreateSheet() {
 	return std::make_unique<Sheet>();

@@ -7,6 +7,7 @@
 #include <optional>
 #include <memory>
 #include <algorithm>
+#include <string_view>
 
 /*
  * Интерфейс реализации ячейки (Pimpl)
@@ -118,7 +119,7 @@ void Cell::Set(std::string text) {
 		return;
 	}
 
-	if (text[0] == FORMULA_SIGN && text.size() > 1) {
+	if (IsFormulaText(text)) {
 		try {
 			impl_ = std::make_unique<FormulaImpl>(std::move(text.substr(1)), sheet_);
 			return;
@@ -164,6 +165,10 @@ void Cell::AddDependentCell(Cell* dependent) {
 
 void Cell::RemoveDependentCell(Cell* dependent) {
 	dependents_.erase(dependent);
+}
+
+bool Cell::IsFormulaText(std::string_view text) {
+	return text.size() > 1 && text[0] == FORMULA_SIGN;
 }
 
 

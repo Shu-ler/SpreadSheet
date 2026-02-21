@@ -57,6 +57,9 @@ public:
     void AddDependentCell(Cell* dependent);
     void RemoveDependentCell(Cell* dependent);
 
+    // Проверяет, является ли текст формулой: начинается с '=' и длина > 1
+    static bool IsFormulaText(std::string_view text);
+
 private:
     class Impl;
     class EmptyImpl;

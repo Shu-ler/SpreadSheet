@@ -259,50 +259,6 @@ namespace ASTImpl {
                 return EP_ATOM;
             }
 
-            //double Evaluate(const SheetInterface& sheet) const override {
-            //    if (!cell_->IsValid()) {
-            //        throw FormulaError(FormulaError::Category::Ref);
-            //    }
-
-            //    const CellInterface* cell = sheet.GetCell(*cell_);
-            //    if (!cell) {
-            //        return 0.0;
-            //    }
-
-            //    CellInterface::Value value = cell->GetValue();
-
-            //    if (std::holds_alternative<double>(value)) {
-            //        double result = std::get<double>(value);
-            //        if (!isfinite(result)) {
-            //            throw FormulaError(FormulaError::Category::Arithmetic);
-            //        }
-            //        return result;
-            //    }
-            //    else if (std::holds_alternative<std::string>(value)) {
-            //        const std::string& str = std::get<std::string>(value);
-            //        if (str.empty()) {
-            //            return 0.0;
-            //        }
-
-            //        char* end;
-            //        const char* cstr = str.c_str();
-            //        double num = strtod(cstr, &end);
-
-            //        if (end != cstr && *end == '\0') {
-            //            if (!isfinite(num)) {
-            //                throw FormulaError(FormulaError::Category::Arithmetic);
-            //            }
-            //            return num;
-            //        }
-            //        else {
-            //            throw FormulaError(FormulaError::Category::Value);
-            //        }
-            //    }
-            //    else {
-            //        throw std::get<FormulaError>(value);
-            //    }
-            //}
-
             double Evaluate(const SheetInterface& sheet) const override {
                 if (!cell_->IsValid()) {
                     throw FormulaError(FormulaError::Category::Ref);

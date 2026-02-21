@@ -82,7 +82,10 @@ private:
     void CheckSelfReference(const std::vector<Position>& referenced_cells, Position cell_pos);
 
     // Проверяет, не возникнет ли циклическая зависимость при установке формулы
-    void CheckCircularDependency(const Cell* target_cell, const std::vector<Position>& referenced_cells);
+    void CheckCircularDependency(const std::vector<Position>& refs, Position target_pos);
+
+    // Создаёт пустые ячейки для указанных позиций, если они ещё не существуют
+    void EnsureCellsExist(const std::vector<Position>& positions);
 
 private:
     // Хранение ячеек: разреженная таблица на основе хэш-карты.

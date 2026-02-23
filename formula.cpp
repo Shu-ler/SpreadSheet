@@ -1,4 +1,4 @@
-#include "formula.h"
+п»ї#include "formula.h"
 
 #include "FormulaAST.h"
 
@@ -17,7 +17,7 @@ namespace {
 
 	class Formula : public FormulaInterface {
 	public:
-		explicit Formula(std::string expression) try 
+		explicit Formula(std::string expression) try
 			: ast_(ParseFormulaAST(expression)) {
 		}
 		catch (const ParsingError& error) {
@@ -46,8 +46,8 @@ namespace {
 					cells.push_back(pos);
 				}
 			}
-			
-			// Сортируем и удаляем дубликаты
+
+			// Г‘Г®Г°ГІГЁГ°ГіГҐГ¬ ГЁ ГіГ¤Г Г«ГїГҐГ¬ Г¤ГіГЎГ«ГЁГЄГ ГІГ»
 			std::sort(cells.begin(), cells.end());
 			cells.erase(unique(cells.begin(), cells.end()), cells.end());
 			return cells;

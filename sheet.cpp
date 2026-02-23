@@ -6,12 +6,34 @@
 #include <iostream>
 #include <optional>
 #include <cassert>
+#include <utility>
 
 using namespace std::literals;
 
 //void Sheet::SetCell(Position pos, std::string text) {
 //	EnsurePositionValid(pos);
 //
+//	// Сначала анализируем новый текст, не трогая ячейку
+//	std::vector<Position> new_refs;
+//	bool is_formula = Cell::IsFormulaText(text);
+//
+//	if (is_formula) {
+//		try {
+//			auto formula = ParseFormula(text.substr(1));
+//			new_refs = formula->GetReferencedCells();
+//
+//			CheckSelfReference(new_refs, pos);
+//			CheckCircularDependency(new_refs, pos);
+//		}
+//		catch (const FormulaException&) {
+//			throw;
+//		}
+//		catch (const CircularDependencyException&) {
+//			throw;
+//		}
+//	}
+//
+//	// Теперь можно безопасно создать или получить ячейку
 //	Cell* cell = GetOrCreateCell(pos);
 //
 //	// Сохраняем старые ссылки
@@ -20,31 +42,13 @@ using namespace std::literals;
 //		old_refs = cell->GetReferencedCells();
 //	}
 //
-//	// Анализируем новые ссылки
-//	std::vector<Position> new_refs;
-//	if (Cell::IsFormulaText(text)) {
-//		try {
-//			auto formula = ParseFormula(text.substr(1));
-//			new_refs = formula->GetReferencedCells();
-//
-//			// Проверка самоссылки
-//			CheckSelfReference(new_refs, pos);
-//
-//			// Проверка циклов
-//			CheckCircularDependency(new_refs, pos);
-//		}
-//		catch (const FormulaException&) {
-//			throw;
-//		}
-//	}
-//
-//	// Создаём пустые ячейки для всех ссылок
+//	// Гарантированно создаём любые зависимые ячейки
 //	EnsureCellsExist(new_refs);
 //
-//	// Устанавливаем новое значение
+//	// Устанавливаем новое содержимое
 //	cell->Set(std::move(text));
 //
-//	// Обновляем граф зависимостей
+//	// Обновляем зависимости
 //	UpdateDependencies(cell, old_refs, new_refs);
 //
 //	// Инвалидируем кэш
@@ -55,50 +59,68 @@ using namespace std::literals;
 //}
 
 void Sheet::SetCell(Position pos, std::string text) {
+	// 1. Проверяем корректность позиции
 	EnsurePositionValid(pos);
 
-	// Сначала анализируем новый текст, не трогая ячейку
-	std::vector<Position> new_refs;
+	// 2. Анализируем содержимое: это формула?
 	bool is_formula = Cell::IsFormulaText(text);
+	std::vector<Position> new_refs;
 
+	// Указатель на существующую ячейку (если есть)
+	Cell* cell = dynamic_cast<Cell*>(GetCell(pos));
+
+	// 3. Если это формула — парсим и проверяем до любых изменений
 	if (is_formula) {
 		try {
+			// Парсим выражение (без '=')
 			auto formula = ParseFormula(text.substr(1));
 			new_refs = formula->GetReferencedCells();
 
+			// Проверка: не ссылается ли на саму себя?
 			CheckSelfReference(new_refs, pos);
+
+			// Проверка: не будет ли циклической зависимости?
 			CheckCircularDependency(new_refs, pos);
 		}
 		catch (const FormulaException&) {
+			// Синтаксическая ошибка в формуле — пробрасываем
 			throw;
 		}
 		catch (const CircularDependencyException&) {
+			// Циклическая зависимость — пробрасываем
 			throw;
 		}
 	}
 
-	// Теперь можно безопасно создать или получить ячейку
-	Cell* cell = GetOrCreateCell(pos);
+	// 4. Теперь безопасно получаем или создаём ячейку
+	// Важно: делаем это ТОЛЬКО после успешной валидации!
+	if (!cell) {
+		cell = GetOrCreateCell(pos);
+	}
 
-	// Сохраняем старые ссылки
+	// 5. Сохраняем старые зависимости (до изменения)
 	std::vector<Position> old_refs;
 	if (Cell::IsFormulaText(cell->GetText())) {
 		old_refs = cell->GetReferencedCells();
 	}
 
-	// Гарантированно создаём любые зависимые ячейки
+	// 6. Создаём пустые ячейки для всех новых ссылок (если ещё не существуют)
+	// Это нужно, чтобы они были доступны при вычислении
 	EnsureCellsExist(new_refs);
 
-	// Устанавливаем новое содержимое
+	// 7. Устанавливаем новое содержимое ячейки
+	// Может изменить impl_, вызвать InvalidateCache внутри FormulaImpl
 	cell->Set(std::move(text));
 
-	// Обновляем зависимости
+	// 8. Обновляем граф зависимостей:
+	// - удаляем эту ячейку из dependents_ старых зависимостей
+	// - добавляем в dependents_ новых
 	UpdateDependencies(cell, old_refs, new_refs);
 
-	// Инвалидируем кэш
+	// 9. Инвалидируем кэш текущей ячейки и всех, кто от неё зависит
 	cell->InvalidateCache();
 
-	// Обновляем размер печатной области
+	// 10. Обновляем размер печатной области
 	UpdatePrintSize();
 }
 

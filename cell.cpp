@@ -1,4 +1,4 @@
-﻿#include "cell.h"
+#include "cell.h"
 #include "sheet.h"
 
 #include <cassert>
@@ -50,11 +50,16 @@ public:
 		: text_(std::move(text)) {
 	}
 
+	// Возвращает значение.
+	// Сюда перенесена попытка преобразования текста в число
+	// из CellExpr::Evaluate
 	Value GetValue() const override {
+		// Для пустого - 0.0
 		if (text_.empty()) {
 			return 0.0;
 		}
 
+		// Для состоящего из одного префикса - 0.0
 		std::string_view content = text_;
 		if (content[0] == ESCAPE_SIGN) {
 			content.remove_prefix(1);
@@ -171,10 +176,6 @@ void Cell::Clear() {
 	Set("");  // используем Set для корректной очистки зависимостей
 }
 
-bool Cell::IsReferenced() const {
-	return !dependents_.empty();
-}
-
 Cell::Value Cell::GetValue() const {
 	return impl_->GetValue();
 }
@@ -209,5 +210,3 @@ void Cell::RemoveDependentCell(Cell* dependent) {
 bool Cell::IsFormulaText(std::string_view text) {
 	return text.size() > 1 && text[0] == FORMULA_SIGN;
 }
-
-

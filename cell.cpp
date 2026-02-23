@@ -143,6 +143,10 @@ Cell::Cell(Sheet& sheet)
 	, sheet_(sheet) {
 }
 
+// Деструктор вынесен сюда,
+// иначе тренажер не может обработать cell.h с неполной реализацией Cell::Impl
+Cell::~Cell() = default;
+
 void Cell::Set(std::string text) {
 	if (text.empty()) {
 		impl_ = std::make_unique<EmptyImpl>();

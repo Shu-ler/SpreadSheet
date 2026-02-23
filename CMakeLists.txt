@@ -15,7 +15,7 @@ else()
     )
 endif()
 
-set(ANTLR_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/antlr-4.13.2-complete.jar)
+set(ANTLR_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/antlr-4.12.0-complete.jar)
 include(${CMAKE_CURRENT_SOURCE_DIR}/FindANTLR.cmake)
 
 add_definitions(
@@ -37,7 +37,6 @@ include_directories(
 file(GLOB sources
     *.cpp
     *.h
-    sheet.cpp
 )
 
 add_executable(

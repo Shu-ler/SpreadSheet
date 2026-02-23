@@ -1,4 +1,4 @@
-﻿#include "formula.h"
+п»ї#include "formula.h"
 
 #include "FormulaAST.h"
 
@@ -37,14 +37,6 @@ namespace {
 			std::ostringstream out;
 			ast_.PrintFormula(out);
 			std::string result = out.str();
-
-			// Убираем лишние #REF! которые могли появиться
-			size_t pos = 0;
-			while ((pos = result.find("#REF!", pos)) != std::string::npos) {
-				// Это не должно происходить, но на всякий случай
-				result.replace(pos, 5, "");
-			}
-
 			return result;
 		}
 
@@ -56,7 +48,7 @@ namespace {
 				}
 			}
 
-			// Ñîðòèðóåì è óäàëÿåì äóáëèêàòû
+			// Сортируем и удаляем дубликаты
 			std::sort(cells.begin(), cells.end());
 			cells.erase(unique(cells.begin(), cells.end()), cells.end());
 			return cells;

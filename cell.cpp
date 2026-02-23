@@ -8,6 +8,7 @@
 #include <memory>
 #include <algorithm>
 #include <string_view>
+#include <cmath>
 
 /*
  * Интерфейс реализации ячейки (Pimpl)

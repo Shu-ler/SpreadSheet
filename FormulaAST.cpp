@@ -1,4 +1,4 @@
-﻿#include "FormulaAST.h"
+#include "FormulaAST.h"
 
 #include "FormulaBaseListener.h"
 #include "FormulaLexer.h"
@@ -293,17 +293,8 @@ namespace ASTImpl {
                 else if (std::holds_alternative<FormulaError>(value)) {
                     throw std::get<FormulaError>(value);
                 }
-                else if (std::holds_alternative<std::string>(value)) {
-                    //const std::string& str = std::get<std::string>(value);
-                    //if (str.empty()) {
-                    //    return 0.0;  // пустая строка → 0
-                    //}
-                    // Непустая строка, но не число → #VALUE!
-                    throw FormulaError(FormulaError::Category::Value);
-                }
 
-                //// На всякий случай
-                //throw FormulaError(FormulaError::Category::Value);
+                throw FormulaError(FormulaError::Category::Value);
             }
         };
 
@@ -346,7 +337,6 @@ namespace ASTImpl {
                 assert(args_.size() == 1);
                 auto root = std::move(args_.front());
                 args_.clear();
-
                 return root;
             }
 
@@ -354,60 +344,14 @@ namespace ASTImpl {
                 return std::move(cells_);
             }
 
-            void exitUnaryOp(FormulaParser::UnaryOpContext* ctx) override {
-                assert(args_.size() >= 1);
-
-                auto operand = std::move(args_.back());
-
-                // TODO: if...else
-                UnaryOpExpr::Type type;
-                if (ctx->SUB()) {
-                    type = UnaryOpExpr::UnaryMinus;
-                }
-                else {
- //                   assert(ctx->ADD() != nullptr);
-                    type = UnaryOpExpr::UnaryPlus;
-                }
-
-                auto node = std::make_unique<UnaryOpExpr>(type, std::move(operand));
-                args_.back() = std::move(node);
-            }
-
-            void exitLiteral(FormulaParser::LiteralContext* ctx) override {
-                double value = 0;
-                auto valueStr = ctx->NUMBER()->getSymbol()->getText();
-                std::istringstream in(valueStr);
-                in >> value;
-                if (!in) {
-                    throw ParsingError("Invalid number: " + valueStr);
-                }
-
-                auto node = std::make_unique<NumberExpr>(value);
-                args_.push_back(std::move(node));
-            }
-
-            void exitCell(FormulaParser::CellContext* ctx) override {
-                auto pos_str = ctx->CELL()->getSymbol()->getText();
-                auto pos_value = Position::FromString(pos_str);
-                if (!pos_value.IsValid()) {
-                    throw FormulaException("Invalid position: " + pos_str);
-                }
-
-                cells_.push_front(pos_value);
-                auto node = std::make_unique<CellExpr>(&cells_.front());
-                args_.push_back(std::move(node));
-            }
-
             void visitTerminal(antlr4::tree::TerminalNode* node) override {
                 switch (node->getSymbol()->getType()) {
                 case FormulaLexer::CELL: {
                     auto pos_str = node->getSymbol()->getText();
                     auto pos_value = Position::FromString(pos_str);
-
                     if (!pos_value.IsValid()) {
                         throw FormulaException("Invalid cell position: " + std::string(pos_str));
                     }
-
                     cells_.push_front(pos_value);
                     auto expr = std::make_unique<CellExpr>(&cells_.front());
                     args_.push_back(std::move(expr));
@@ -425,40 +369,31 @@ namespace ASTImpl {
                     break;
                 }
                 default:
-                    // Другие терминалы (например, операторы) игнорируются здесь
                     break;
                 }
             }
 
+            void exitUnaryOp(FormulaParser::UnaryOpContext* ctx) override {
+                auto operand = std::move(args_.back());
+                UnaryOpExpr::Type type = ctx->SUB() ? UnaryOpExpr::UnaryMinus : UnaryOpExpr::UnaryPlus;
+                args_.back() = std::make_unique<UnaryOpExpr>(type, std::move(operand));
+            }
+
             void exitBinaryOp(FormulaParser::BinaryOpContext* ctx) override {
-                assert(args_.size() >= 2);
-
-                auto rhs = std::move(args_.back());
-                args_.pop_back();
-
+                auto rhs = std::move(args_.back()); args_.pop_back();
                 auto lhs = std::move(args_.back());
 
                 BinaryOpExpr::Type type;
-                if (ctx->ADD()) {
-                    type = BinaryOpExpr::Add;
-                }
-                else if (ctx->SUB()) {
-                    type = BinaryOpExpr::Subtract;
-                }
-                else if (ctx->MUL()) {
-                    type = BinaryOpExpr::Multiply;
-                }
-                else {
-                    assert(ctx->DIV() != nullptr);
-                    type = BinaryOpExpr::Divide;
-                }
+                if (ctx->ADD()) type = BinaryOpExpr::Add;
+                else if (ctx->SUB()) type = BinaryOpExpr::Subtract;
+                else if (ctx->MUL()) type = BinaryOpExpr::Multiply;
+                else type = BinaryOpExpr::Divide;
 
-                auto node = std::make_unique<BinaryOpExpr>(type, std::move(lhs), std::move(rhs));
-                args_.back() = std::move(node);
+                args_.back() = std::make_unique<BinaryOpExpr>(type, std::move(lhs), std::move(rhs));
             }
 
             void exitParens(FormulaParser::ParensContext* /*ctx*/) override {
-                // Nothing to do
+                // ничего не делаем
             }
 
             void visitErrorNode(antlr4::tree::ErrorNode* node) override {
@@ -469,7 +404,6 @@ namespace ASTImpl {
             std::vector<std::unique_ptr<Expr>> args_;
             std::forward_list<Position> cells_;
         };
-
         class BailErrorListener : public antlr4::BaseErrorListener {
         public:
             void syntaxError(antlr4::Recognizer* /* recognizer */, antlr4::Token* /* offendingSymbol */,

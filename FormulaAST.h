@@ -4,7 +4,6 @@
 #include "common.h"
 
 #include <forward_list>
-#include <functional>
 #include <stdexcept>
 
 namespace ASTImpl {

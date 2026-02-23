@@ -4,8 +4,6 @@
 #include "cell.h"
 #include <unordered_map>
 
-#include <functional>
-
 /*
  * Основной класс таблицы, реализующий интерфейс SheetInterface.
  * Управляет набором ячеек, их содержимым, размерами печатной области,

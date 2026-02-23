@@ -6,10 +6,11 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <memory>
 #include <optional>
 #include <sstream>
-#include <variant>
+#include <string>
 
 namespace ASTImpl {
 
@@ -79,7 +80,7 @@ namespace ASTImpl {
         virtual ExprPrecedence GetPrecedence() const = 0;
 
         void PrintFormula(std::ostream& out, ExprPrecedence parent_precedence,
-            bool right_child = false) const {
+                        bool right_child = false) const {
             auto precedence = GetPrecedence();
             auto mask = right_child ? PR_RIGHT : PR_LEFT;
             bool parens_needed = PRECEDENCE_RULES[parent_precedence][precedence] & mask;
@@ -95,7 +96,9 @@ namespace ASTImpl {
         }
     };
 
-    namespace {
+        /*
+         * Обработка бинарных операций
+         */
         class BinaryOpExpr final : public Expr {
         public:
             enum Type : char {
@@ -104,6 +107,11 @@ namespace ASTImpl {
                 Multiply = '*',
                 Divide = '/',
             };
+
+        private:
+            Type type_;                 ///< Оператор
+            std::unique_ptr<Expr> lhs_; ///< Левый операнд
+            std::unique_ptr<Expr> rhs_; ///< Правый операнд
 
         public:
             explicit BinaryOpExpr(Type type, std::unique_ptr<Expr> lhs, std::unique_ptr<Expr> rhs)
@@ -147,7 +155,7 @@ namespace ASTImpl {
                 double lhs_value = lhs_->Evaluate(sheet);
                 double rhs_value = rhs_->Evaluate(sheet);
 
-                if (!isfinite(lhs_value) || !isfinite(rhs_value)) {
+                if (!std::isfinite(lhs_value) || !std::isfinite(rhs_value)) {
                     throw FormulaError(FormulaError::Category::Arithmetic);
                 }
 
@@ -174,25 +182,27 @@ namespace ASTImpl {
                     return 0.0;
                 }
 
-                if (!isfinite(result)) {
+                if (!std::isfinite(result)) {
                     throw FormulaError(FormulaError::Category::Arithmetic);
                 }
 
                 return result;
             }
-
-        private:
-            Type type_;
-            std::unique_ptr<Expr> lhs_;
-            std::unique_ptr<Expr> rhs_;
         };
 
+        /*
+         * Обработка унарных операций
+         */
         class UnaryOpExpr final : public Expr {
         public:
             enum Type : char {
                 UnaryPlus = '+',
                 UnaryMinus = '-',
             };
+
+        private:
+            Type type_;                     ///< Оператор
+            std::unique_ptr<Expr> operand_; ///< Операнд
 
         public:
             explicit UnaryOpExpr(Type type, std::unique_ptr<Expr> operand)
@@ -218,7 +228,7 @@ namespace ASTImpl {
             double Evaluate(const SheetInterface& sheet) const override {
                 double operand_value = operand_->Evaluate(sheet);
 
-                if (!isfinite(operand_value)) {
+                if (!std::isfinite(operand_value)) {
                     throw FormulaError(FormulaError::Category::Arithmetic);
                 }
 
@@ -230,13 +240,15 @@ namespace ASTImpl {
 
                 return result;
             }
-
-        private:
-            Type type_;
-            std::unique_ptr<Expr> operand_;
         };
 
+        /*
+         * Обработка ячеек
+         */
         class CellExpr final : public Expr {
+        private:
+            const Position* cell_;      ///< Ячейка
+
         public:
             explicit CellExpr(const Position* cell)
                 : cell_(cell) {
@@ -273,41 +285,35 @@ namespace ASTImpl {
 
                 if (std::holds_alternative<double>(value)) {
                     double result = std::get<double>(value);
-                    if (!isfinite(result)) {
+                    if (!std::isfinite(result)) {
                         throw FormulaError(FormulaError::Category::Arithmetic);
                     }
                     return result;
                 }
-                else if (std::holds_alternative<std::string>(value)) {
-                    const std::string& str = std::get<std::string>(value);
-                    if (str.empty()) {
-                        return 0.0;
-                    }
-
-                    char* end;
-                    const char* cstr = str.c_str();
-                    double num = strtod(cstr, &end);
-
-                    if (end != cstr && *end == '\0') {
-                        if (!isfinite(num)) {
-                            throw FormulaError(FormulaError::Category::Arithmetic);
-                        }
-                        return num;
-                    }
-                    else {
-                        throw FormulaError(FormulaError::Category::Value);
-                    }
-                }
-                else {
+                else if (std::holds_alternative<FormulaError>(value)) {
                     throw std::get<FormulaError>(value);
                 }
-            }
+                else if (std::holds_alternative<std::string>(value)) {
+                    //const std::string& str = std::get<std::string>(value);
+                    //if (str.empty()) {
+                    //    return 0.0;  // пустая строка → 0
+                    //}
+                    // Непустая строка, но не число → #VALUE!
+                    throw FormulaError(FormulaError::Category::Value);
+                }
 
-        private:
-            const Position* cell_;
+                //// На всякий случай
+                //throw FormulaError(FormulaError::Category::Value);
+            }
         };
 
+        /*
+         * Обработка числового выражения
+         */
         class NumberExpr final : public Expr {
+        private:
+            double value_;
+
         public:
             explicit NumberExpr(double value)
                 : value_(value) {
@@ -326,15 +332,12 @@ namespace ASTImpl {
             }
 
             double Evaluate(const SheetInterface& sheet) const override {
-                if (!isfinite(value_)) {
+                if (!std::isfinite(value_)) {
                     throw FormulaError(FormulaError::Category::Arithmetic);
                 }
 
                 return value_;
             }
-
-        private:
-            double value_;
         };
 
         class ParseASTListener final : public FormulaBaseListener {
@@ -351,18 +354,18 @@ namespace ASTImpl {
                 return std::move(cells_);
             }
 
-        public:
             void exitUnaryOp(FormulaParser::UnaryOpContext* ctx) override {
                 assert(args_.size() >= 1);
 
                 auto operand = std::move(args_.back());
 
+                // TODO: if...else
                 UnaryOpExpr::Type type;
                 if (ctx->SUB()) {
                     type = UnaryOpExpr::UnaryMinus;
                 }
                 else {
-                    assert(ctx->ADD() != nullptr);
+ //                   assert(ctx->ADD() != nullptr);
                     type = UnaryOpExpr::UnaryPlus;
                 }
 
@@ -384,15 +387,47 @@ namespace ASTImpl {
             }
 
             void exitCell(FormulaParser::CellContext* ctx) override {
-                auto value_str = ctx->CELL()->getSymbol()->getText();
-                auto value = Position::FromString(value_str);
-                if (!value.IsValid()) {
-                    throw FormulaException("Invalid position: " + value_str);
+                auto pos_str = ctx->CELL()->getSymbol()->getText();
+                auto pos_value = Position::FromString(pos_str);
+                if (!pos_value.IsValid()) {
+                    throw FormulaException("Invalid position: " + pos_str);
                 }
 
-                cells_.push_front(value);
+                cells_.push_front(pos_value);
                 auto node = std::make_unique<CellExpr>(&cells_.front());
                 args_.push_back(std::move(node));
+            }
+
+            void visitTerminal(antlr4::tree::TerminalNode* node) override {
+                switch (node->getSymbol()->getType()) {
+                case FormulaLexer::CELL: {
+                    auto pos_str = node->getSymbol()->getText();
+                    auto pos_value = Position::FromString(pos_str);
+
+                    if (!pos_value.IsValid()) {
+                        throw FormulaException("Invalid cell position: " + std::string(pos_str));
+                    }
+
+                    cells_.push_front(pos_value);
+                    auto expr = std::make_unique<CellExpr>(&cells_.front());
+                    args_.push_back(std::move(expr));
+                    break;
+                }
+                case FormulaLexer::NUMBER: {
+                    double value = 0;
+                    auto valueStr = node->getSymbol()->getText();
+                    std::istringstream in(valueStr);
+                    in >> value;
+                    if (!in || !std::isfinite(value)) {
+                        throw ParsingError("Invalid number: " + valueStr);
+                    }
+                    args_.push_back(std::make_unique<NumberExpr>(value));
+                    break;
+                }
+                default:
+                    // Другие терминалы (например, операторы) игнорируются здесь
+                    break;
+                }
             }
 
             void exitBinaryOp(FormulaParser::BinaryOpContext* ctx) override {
@@ -422,6 +457,10 @@ namespace ASTImpl {
                 args_.back() = std::move(node);
             }
 
+            void exitParens(FormulaParser::ParensContext* /*ctx*/) override {
+                // Nothing to do
+            }
+
             void visitErrorNode(antlr4::tree::ErrorNode* node) override {
                 throw ParsingError("Error when parsing: " + node->getSymbol()->getText());
             }
@@ -440,8 +479,6 @@ namespace ASTImpl {
                 throw ParsingError("Error when lexing: " + msg);
             }
         };
-
-    }  // namespace
 }  // namespace ASTImpl
 
 FormulaAST ParseFormulaAST(std::istream& in) {
@@ -461,11 +498,15 @@ FormulaAST ParseFormulaAST(std::istream& in) {
     parser.setErrorHandler(error_handler);
     parser.removeErrorListeners();
 
-    tree::ParseTree* tree = parser.main();
-    ASTImpl::ParseASTListener listener;
-    tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
-
-    return FormulaAST(listener.MoveRoot(), listener.MoveCells());
+    try {
+        tree::ParseTree* tree = parser.main();
+        ASTImpl::ParseASTListener listener;
+        tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
+        return FormulaAST(listener.MoveRoot(), listener.MoveCells());
+    }
+    catch (const ParseCancellationException&) {
+        throw ParsingError("Syntax error in formula");
+    }
 }
 
 FormulaAST ParseFormulaAST(const std::string& in_str) {
@@ -494,7 +535,7 @@ double FormulaAST::Execute(const SheetInterface& sheet) const {
 FormulaAST::FormulaAST(std::unique_ptr<ASTImpl::Expr> root_expr, std::forward_list<Position> cells)
     : root_expr_(std::move(root_expr))
     , cells_(std::move(cells)) {
-    cells_.sort();  // to avoid sorting in GetReferencedCells
+    //cells_.sort();  // to avoid sorting in GetReferencedCells
 }
 
 FormulaAST::~FormulaAST() = default;

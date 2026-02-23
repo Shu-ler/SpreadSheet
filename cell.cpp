@@ -51,14 +51,14 @@ public:
 
 	Value GetValue() const override {
 		if (text_.empty()) {
-			return "";  // ← string, но Evaluate знает, что это 0
+			return 0.0;
 		}
 
 		std::string_view content = text_;
 		if (content[0] == ESCAPE_SIGN) {
 			content.remove_prefix(1);
 			if (content.empty()) {
-				return "";
+				return 0.0;
 			}
 		}
 

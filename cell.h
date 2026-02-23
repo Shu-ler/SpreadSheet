@@ -19,7 +19,7 @@ class Sheet;  // Forward declaration
 class Cell : public CellInterface {
 public:
     explicit Cell(Sheet& sheet);
-    ~Cell() = default;
+    ~Cell();
 
     // Устанавливает содержимое ячейки.
     // Если текст начинается с '=', интерпретируется как формула.
@@ -51,12 +51,16 @@ public:
     // Результат отсортирован и не содержит дубликатов.
     std::vector<Position> GetReferencedCells() const override;
 
+    // Возвращает список позиций ячеек, которые завясят от текущей.
     std::unordered_set<Cell*> GetDependentsCells() const;
 
-    //// Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
+    // Инвалидирует кэш ячейки и зависимых ячеек (рекурсия)
     void InvalidateCache();
 
+    // Добавляет ячейку в контейнер зависимых ячеек
     void AddDependentCell(Cell* dependent);
+    
+    // Удаляет ячейку из контейнера зависимых ячеек
     void RemoveDependentCell(Cell* dependent);
 
     // Проверяет, является ли текст формулой: начинается с '=' и длина > 1
@@ -74,6 +78,6 @@ private:
     // Ссылка на лист — нужна для проверки циклических зависимостей
     Sheet& sheet_;
 
-    // Ячейки, которые зависят от этой (инвалидация кэша)
+    // Ячейки, которые зависят от этой (для инвалидации кэша)
     std::unordered_set<Cell*> dependents_;
 };

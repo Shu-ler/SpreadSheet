@@ -36,7 +36,16 @@ namespace {
 		std::string GetExpression() const override {
 			std::ostringstream out;
 			ast_.PrintFormula(out);
-			return out.str();
+			std::string result = out.str();
+
+			// Убираем лишние #REF! которые могли появиться
+			size_t pos = 0;
+			while ((pos = result.find("#REF!", pos)) != std::string::npos) {
+				// Это не должно происходить, но на всякий случай
+				result.replace(pos, 5, "");
+			}
+
+			return result;
 		}
 
 		std::vector<Position> GetReferencedCells() const override {

@@ -1,16 +1,18 @@
-#include "sheet.h"
 #include "cell.h"
 #include "formula.h"
+#include "sheet.h"
 
 #include <algorithm>
+#include <cassert>
 #include <functional>
 #include <iostream>
-#include <cassert>
 #include <utility>
+#include <vector>
 
 using namespace std::literals;
 
 void Sheet::SetCell(Position pos, std::string text) {
+
 	// 1. Проверяем корректность позиции
 	EnsurePositionValid(pos);
 
@@ -251,9 +253,9 @@ void Sheet::EnsureCellsExist(const std::vector<Position>& positions) {
 	}
 }
 
-void Sheet::UpdateDependencies(Cell* cell, 
-			const std::vector<Position>& old_refs, 
-			const std::vector<Position>& new_refs) {
+void Sheet::UpdateDependencies(Cell* cell,
+	const std::vector<Position>& old_refs,
+	const std::vector<Position>& new_refs) {
 	// Удаляем эту ячейку из dependents_ старых зависимостей
 	for (const auto& ref_pos : old_refs) {
 		if (ref_pos == GetPosition(cell)) continue; // на всякий случай исключаем самоссылку

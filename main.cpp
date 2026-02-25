@@ -3,6 +3,13 @@
 #include "common.h"
 #include "formula.h"
 #include "test_runner_p.h"
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <variant>
+#include <vector>
 
 inline std::ostream& operator<<(std::ostream& output, Position pos) {
     return output << "(" << pos.row << ", " << pos.col << ")";

@@ -1,8 +1,13 @@
 #pragma once
 
-#include "common.h"
 #include "cell.h"
+#include "common.h"
+
+#include <memory>
+#include <ostream>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
 /*
  * Основной класс таблицы, реализующий интерфейс SheetInterface.
@@ -11,98 +16,98 @@
  */
 class Sheet : public SheetInterface {
 public:
-    Sheet() = default;
-    ~Sheet() override = default;
+	Sheet() = default;
+	~Sheet() override = default;
 
-    // Устанавливает содержимое ячейки по указанной позиции.
-    // Если текст начинается с '=', интерпретируется как формула.
-    // Проверяет корректность позиции, синтаксис формулы и циклические зависимости.
-    // Выбрасывает исключения при ошибках.
-    // Обновляет размер печатной области.
-    // При необходимости создаёт зависимые ячейки
-    // Инвалидирует кэш ячейки и зависимых ячеек
-    void SetCell(Position pos, std::string text) override;
+	// Устанавливает содержимое ячейки по указанной позиции.
+	// Если текст начинается с '=', интерпретируется как формула.
+	// Проверяет корректность позиции, синтаксис формулы и циклические зависимости.
+	// Выбрасывает исключения при ошибках.
+	// Обновляет размер печатной области.
+	// При необходимости создаёт зависимые ячейки
+	// Инвалидирует кэш ячейки и зависимых ячеек
+	void SetCell(Position pos, std::string text) override;
 
-    // Возвращает константный указатель на ячейку по позиции.
-    // Возвращает nullptr, если ячейка пуста или позиция вне диапазона.
-    const CellInterface* GetCell(Position pos) const override;
-    
-    // Неконстантная версия GetCell — позволяет модифицировать ячейку.
-    CellInterface* GetCell(Position pos) override;
+	// Возвращает константный указатель на ячейку по позиции.
+	// Возвращает nullptr, если ячейка пуста или позиция вне диапазона.
+	const CellInterface* GetCell(Position pos) const override;
 
-    // Очищает содержимое ячейки (устанавливает в пустое состояние).
-    // Если ячейка существовала, освобождает её ресурсы.
-    // Корректирует размер печатной области, если нужно.
-    void ClearCell(Position pos) override;
+	// Неконстантная версия GetCell — позволяет модифицировать ячейку.
+	CellInterface* GetCell(Position pos) override;
 
-    // Возвращает позицию ячейки
-    Position GetPosition(const Cell* cell) const;
+	// Очищает содержимое ячейки (устанавливает в пустое состояние).
+	// Если ячейка существовала, освобождает её ресурсы.
+	// Корректирует размер печатной области, если нужно.
+	void ClearCell(Position pos) override;
 
-    // Возвращает размер прямоугольной области, содержащей все непустые ячейки.
-    // Используется для определения границ вывода таблицы.
-    Size GetPrintableSize() const override;
+	// Возвращает позицию ячейки
+	Position GetPosition(const Cell* cell) const;
 
-    // Печатает значения всех ячеек в заданный поток.
-    // Для каждой ячейки вызывает GetValue():
-    // - строки выводятся как есть,
-    // - числа выводятся как double,
-    // - ошибки формул выводятся через operator<<.
-    // Пустые ячейки — пустые строки. Столбцы разделены табуляцией.
-    void PrintValues(std::ostream& output) const override;
+	// Возвращает размер прямоугольной области, содержащей все непустые ячейки.
+	// Используется для определения границ вывода таблицы.
+	Size GetPrintableSize() const override;
 
-    // Печатает текстовое содержимое всех ячеек (как при редактировании).
-    // Для текстовых ячеек — текст, для формул — выражение (например, "=A1+B1").
-    // Пустые ячейки — пустые строки. Столбцы разделены табуляцией.
-    void PrintTexts(std::ostream& output) const override;
+	// Печатает значения всех ячеек в заданный поток.
+	// Для каждой ячейки вызывает GetValue():
+	// - строки выводятся как есть,
+	// - числа выводятся как double,
+	// - ошибки формул выводятся через operator<<.
+	// Пустые ячейки — пустые строки. Столбцы разделены табуляцией.
+	void PrintValues(std::ostream& output) const override;
 
-    // Хэш-функция для Position — требуется для использования в unordered_map.
-    struct PositionHash {
-        size_t operator()(const Position& pos) const {
-            // Комбинируем row и col через битовый сдвиг.
-            return static_cast<size_t>(pos.row) ^
-                (static_cast<size_t>(pos.col) << 16);
-        }
-    };
+	// Печатает текстовое содержимое всех ячеек (как при редактировании).
+	// Для текстовых ячеек — текст, для формул — выражение (например, "=A1+B1").
+	// Пустые ячейки — пустые строки. Столбцы разделены табуляцией.
+	void PrintTexts(std::ostream& output) const override;
 
-private:
-    // Обновляет размер печатной области (print_size_) на основе текущих ячеек.
-    // Проходит по всем занятым позициям, определяет максимальные индексы.
-    void UpdatePrintSize();
-
-    // Аналогично UpdatePrintSize, но вызывается после очистки ячейки,
-    // чтобы уменьшить размер области, если последние данные были удалены.
-    void ShrinkPrintSize();
-
-    // Проверяет позицию; бросает InvalidPositionException, если некорректна
-    void EnsurePositionValid(Position pos) const;
-
-    // Возвращает указатель на существующую или новую ячейку по позиции
-    Cell* GetOrCreateCell(Position pos);
-
-    // Проверяет строку на предмет, не формула ли это
-    inline bool IsFormula(std::string text);
-
-    // Проверяет, не ссылается ли формула на саму себя
-    void CheckSelfReference(const std::vector<Position>& referenced_cells, Position cell_pos);
-
-    // Проверяет, не возникнет ли циклическая зависимость при установке формулы
-    void CheckCircularDependency(const std::vector<Position>& refs, Position target_pos);
-
-    // Создаёт пустые ячейки для указанных позиций, если они ещё не существуют
-    void EnsureCellsExist(const std::vector<Position>& positions);
-
-    // Обновляет граф зависимостей: удаляет старые связи, добавляет новые
-    void UpdateDependencies(Cell* cell,
-        const std::vector<Position>& old_refs,
-        const std::vector<Position>& new_refs);
+	// Хэш-функция для Position — требуется для использования в unordered_map.
+	struct PositionHash {
+		size_t operator()(const Position& pos) const {
+			// Комбинируем row и col через битовый сдвиг.
+			return static_cast<size_t>(pos.row) ^
+				(static_cast<size_t>(pos.col) << 16);
+		}
+	};
 
 private:
-    // Хранение ячеек: разреженная таблица на основе хэш-карты.
-    // Ключ — позиция (row, col), значение — уникальный указатель на Cell.
-    // Эффективно по памяти при разреженных данных.
-    std::unordered_map<Position, std::unique_ptr<Cell>, PositionHash> cells_;
+	// Обновляет размер печатной области (print_size_) на основе текущих ячеек.
+	// Проходит по всем занятым позициям, определяет максимальные индексы.
+	void UpdatePrintSize();
 
-    // Размер прямоугольника, содержащего все непустые ячейки.
-    // Используется для эффективного вывода таблицы (PrintValues/PrintTexts).
-    Size print_size_;
+	// Аналогично UpdatePrintSize, но вызывается после очистки ячейки,
+	// чтобы уменьшить размер области, если последние данные были удалены.
+	void ShrinkPrintSize();
+
+	// Проверяет позицию; бросает InvalidPositionException, если некорректна
+	void EnsurePositionValid(Position pos) const;
+
+	// Возвращает указатель на существующую или новую ячейку по позиции
+	Cell* GetOrCreateCell(Position pos);
+
+	// Проверяет строку на предмет, не формула ли это
+	inline bool IsFormula(std::string text);
+
+	// Проверяет, не ссылается ли формула на саму себя
+	void CheckSelfReference(const std::vector<Position>& referenced_cells, Position cell_pos);
+
+	// Проверяет, не возникнет ли циклическая зависимость при установке формулы
+	void CheckCircularDependency(const std::vector<Position>& refs, Position target_pos);
+
+	// Создаёт пустые ячейки для указанных позиций, если они ещё не существуют
+	void EnsureCellsExist(const std::vector<Position>& positions);
+
+	// Обновляет граф зависимостей: удаляет старые связи, добавляет новые
+	void UpdateDependencies(Cell* cell,
+		const std::vector<Position>& old_refs,
+		const std::vector<Position>& new_refs);
+
+private:
+	// Хранение ячеек: разреженная таблица на основе хэш-карты.
+	// Ключ — позиция (row, col), значение — уникальный указатель на Cell.
+	// Эффективно по памяти при разреженных данных.
+	std::unordered_map<Position, std::unique_ptr<Cell>, PositionHash> cells_;
+
+	// Размер прямоугольника, содержащего все непустые ячейки.
+	// Используется для эффективного вывода таблицы (PrintValues/PrintTexts).
+	Size print_size_;
 };

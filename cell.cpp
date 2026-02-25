@@ -1,6 +1,6 @@
 #include "cell.h"
-#include "sheet.h"
 #include "formula.h"
+#include "sheet.h"
 #include <algorithm>
 #include <cmath>
 #include <memory>
@@ -176,6 +176,19 @@ void Cell::Clear() {
 
 Cell::Value Cell::GetValue() const {
 	return impl_->GetValue();
+}
+
+void Cell::PrintValue(std::ostream& output) const {
+	auto value = GetValue();
+	if (std::holds_alternative<std::string>(value)) {
+		output << std::get<std::string>(value);
+	}
+	else if (std::holds_alternative<double>(value)) {
+		output << std::get<double>(value);
+	}
+	else if (std::holds_alternative<FormulaError>(value)) {
+		output << std::get<FormulaError>(value);
+	}
 }
 
 std::string Cell::GetText() const {

@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <functional>
 
 /*
  * Основной класс таблицы, реализующий интерфейс SheetInterface.
@@ -70,6 +71,9 @@ public:
 	};
 
 private:
+	// Лямбда для печати
+	using CellPrinter = std::function<void(const Cell*, std::ostream&)>;
+
 	// Обновляет размер печатной области (print_size_) на основе текущих ячеек.
 	// Проходит по всем занятым позициям, определяет максимальные индексы.
 	void UpdatePrintSize();
@@ -101,8 +105,8 @@ private:
 		const std::vector<Position>& old_refs,
 		const std::vector<Position>& new_refs);
 
-	// Печатает текстовое содержимое всех ячеек одной строки (как при редактировании).
-	void PrintRowTexts(const int r, std::ostream& output) const;
+	// Печатает значения или текстовое содержимое всех ячеек строки таблицы.
+	void PrintRow(const int row, std::ostream& output, CellPrinter print_cell) const;
 
 private:
 	// Хранение ячеек: разреженная таблица на основе хэш-карты.

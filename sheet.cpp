@@ -119,47 +119,31 @@ Size Sheet::GetPrintableSize() const {
 
 void Sheet::PrintValues(std::ostream& output) const {
 	for (int r = 0; r < print_size_.rows; ++r) {
-		for (int c = 0; c < print_size_.cols; ++c) {
-			Position pos{ r, c };
-			auto it = cells_.find(pos);
-			if (it != cells_.end() && it->second) {
-				CellInterface::Value value = it->second->GetValue();
-				if (std::holds_alternative<std::string>(value)) {
-					output << std::get<std::string>(value);
-				}
-				else if (std::holds_alternative<double>(value)) {
-					output << std::get<double>(value);
-				}
-				else if (std::holds_alternative<FormulaError>(value)) {
-					output << std::get<FormulaError>(value);
-				}
-			}
-			if (c + 1 < print_size_.cols) {
-				output << "\t";
-			}
-		}
-		output << "\n";
+		PrintRow(r, output, [this](const Cell* cell, std::ostream& os) {
+			cell->PrintValue(os);
+			});
 	}
 }
 
 void Sheet::PrintTexts(std::ostream& output) const {
 	for (int r = 0; r < print_size_.rows; ++r) {
-		PrintRowTexts(r, output);
+		PrintRow(r, output, [this](const Cell* cell, std::ostream& os) {
+			os << cell->GetText();
+			});
 	}
 }
 
-void Sheet::PrintRowTexts(const int r, std::ostream& output) const {
+void Sheet::PrintRow(const int row, std::ostream& output, CellPrinter print_cell) const {
 	for (int c = 0; c < print_size_.cols; ++c) {
-		Position pos{ r, c };
-		auto it = cells_.find(pos);
-		if (it != cells_.end() && it->second) {
-			output << it->second->GetText();
-		}
-		if (c + 1 < print_size_.cols) {
+		if (c > 0) {
 			output << "\t";
 		}
+		auto it = cells_.find(Position{ row, c });
+		if (it != cells_.end() && it->second) {
+			print_cell(it->second.get(), output);
+		}
 	}
-	output << "\n";
+	output << '\n';
 }
 
 void Sheet::UpdatePrintSize() {

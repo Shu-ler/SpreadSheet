@@ -1,62 +1,14 @@
 #include "sheet.h"
 #include "cell.h"
+#include "formula.h"
 
 #include <algorithm>
 #include <functional>
 #include <iostream>
-#include <optional>
 #include <cassert>
 #include <utility>
 
 using namespace std::literals;
-
-//void Sheet::SetCell(Position pos, std::string text) {
-//	EnsurePositionValid(pos);
-//
-//	// Сначала анализируем новый текст, не трогая ячейку
-//	std::vector<Position> new_refs;
-//	bool is_formula = Cell::IsFormulaText(text);
-//
-//	if (is_formula) {
-//		try {
-//			auto formula = ParseFormula(text.substr(1));
-//			new_refs = formula->GetReferencedCells();
-//
-//			CheckSelfReference(new_refs, pos);
-//			CheckCircularDependency(new_refs, pos);
-//		}
-//		catch (const FormulaException&) {
-//			throw;
-//		}
-//		catch (const CircularDependencyException&) {
-//			throw;
-//		}
-//	}
-//
-//	// Теперь можно безопасно создать или получить ячейку
-//	Cell* cell = GetOrCreateCell(pos);
-//
-//	// Сохраняем старые ссылки
-//	std::vector<Position> old_refs;
-//	if (Cell::IsFormulaText(cell->GetText())) {
-//		old_refs = cell->GetReferencedCells();
-//	}
-//
-//	// Гарантированно создаём любые зависимые ячейки
-//	EnsureCellsExist(new_refs);
-//
-//	// Устанавливаем новое содержимое
-//	cell->Set(std::move(text));
-//
-//	// Обновляем зависимости
-//	UpdateDependencies(cell, old_refs, new_refs);
-//
-//	// Инвалидируем кэш
-//	cell->InvalidateCache();
-//
-//	// Обновляем размер печатной области
-//	UpdatePrintSize();
-//}
 
 void Sheet::SetCell(Position pos, std::string text) {
 	// 1. Проверяем корректность позиции

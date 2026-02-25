@@ -1,13 +1,12 @@
 #pragma once
 
 #include "common.h"
-#include "formula.h"
 
 #include <memory>
-#include <optional>
 #include <unordered_set>
 #include <vector>
-#include <variant>
+#include <string>
+#include <string_view>
 
 class Sheet;  // Forward declaration
 

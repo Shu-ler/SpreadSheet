@@ -1,4 +1,4 @@
-п»ї#include "formula.h"
+#include "formula.h"
 
 #include "FormulaAST.h"
 

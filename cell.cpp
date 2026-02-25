@@ -1,14 +1,13 @@
 #include "cell.h"
 #include "sheet.h"
 
-#include <cassert>
-#include <iostream>
 #include <string>
 #include <optional>
 #include <memory>
 #include <algorithm>
 #include <string_view>
 #include <cmath>
+#include "formula.h"
 
 /*
  * Интерфейс реализации ячейки (Pimpl)

@@ -101,6 +101,9 @@ private:
 		const std::vector<Position>& old_refs,
 		const std::vector<Position>& new_refs);
 
+	// Печатает текстовое содержимое всех ячеек одной строки (как при редактировании).
+	void PrintRowTexts(const int r, std::ostream& output) const;
+
 private:
 	// Хранение ячеек: разреженная таблица на основе хэш-карты.
 	// Ключ — позиция (row, col), значение — уникальный указатель на Cell.

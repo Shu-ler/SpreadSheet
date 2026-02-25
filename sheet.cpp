@@ -87,10 +87,7 @@ const CellInterface* Sheet::GetCell(Position pos) const {
 	EnsurePositionValid(pos);
 
 	auto it = cells_.find(pos);
-	if (it == cells_.end() || !it->second) {
-		return nullptr;
-	}
-	return it->second.get();
+	return (it == cells_.end() || !it->second) ? nullptr : it->second.get();
 }
 
 CellInterface* Sheet::GetCell(Position pos) {
@@ -147,18 +144,22 @@ void Sheet::PrintValues(std::ostream& output) const {
 
 void Sheet::PrintTexts(std::ostream& output) const {
 	for (int r = 0; r < print_size_.rows; ++r) {
-		for (int c = 0; c < print_size_.cols; ++c) {
-			Position pos{ r, c };
-			auto it = cells_.find(pos);
-			if (it != cells_.end() && it->second) {
-				output << it->second->GetText();
-			}
-			if (c + 1 < print_size_.cols) {
-				output << "\t";
-			}
-		}
-		output << "\n";
+		PrintRowTexts(r, output);
 	}
+}
+
+void Sheet::PrintRowTexts(const int r, std::ostream& output) const {
+	for (int c = 0; c < print_size_.cols; ++c) {
+		Position pos{ r, c };
+		auto it = cells_.find(pos);
+		if (it != cells_.end() && it->second) {
+			output << it->second->GetText();
+		}
+		if (c + 1 < print_size_.cols) {
+			output << "\t";
+		}
+	}
+	output << "\n";
 }
 
 void Sheet::UpdatePrintSize() {

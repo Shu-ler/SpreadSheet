@@ -25,9 +25,6 @@ void Sheet::SetCell(Position pos, std::string text) {
 	bool is_formula = Cell::IsFormulaText(text);
 	std::vector<Position> new_refs;
 
-	// Указатель на существующую ячейку (если есть)
-	Cell* cell = dynamic_cast<Cell*>(GetCell(pos));
-
 	// 3. Если это формула — парсим и проверяем до любых изменений
 	if (is_formula) {
 		try {
@@ -53,9 +50,7 @@ void Sheet::SetCell(Position pos, std::string text) {
 
 	// 4. Теперь безопасно получаем или создаём ячейку
 	// Важно: делаем это ТОЛЬКО после успешной валидации!
-	if (!cell) {
-		cell = GetOrCreateCell(pos);
-	}
+	Cell* cell = GetOrCreateCell(pos);
 
 	// 5. Сохраняем старые зависимости (до изменения)
 	std::vector<Position> old_refs;
